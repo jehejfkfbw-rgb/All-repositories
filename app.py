@@ -1,32 +1,46 @@
 import streamlit as st
 
-# 1. إعدادات الصفحة
+# إعدادات الصفحة
 st.set_page_config(page_title="ميمو", page_icon="🤖")
 
-# 2. كود إخفاء العلامة المائية والـ Menu
+# إخفاء العلامة المائية والـ Menu
 hide_style = """
     <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    #MainMenu {visibility: hidden;}, footer {visibility: hidden;}, header {visibility: hidden;}
     </style>
     """
 st.markdown(hide_style, unsafe_allow_html=True)
 
-# 3. محتوى لوحة التحكم الجانبية
+# لوحة التحكم الجانبية
 with st.sidebar:
     st.title("🤖 لوحة تحكم ميمو")
-    st.write("أهلاً بك في ميمو المطور.")
     option = st.selectbox("اختار المهمة:", ["دردشة", "إعدادات"])
 
-# 4. محتوى الصفحة الرئيسي
+# محتوى الصفحة الرئيسي
 st.title("أهلاً بك في ميمو")
 
 if option == "دردشة":
     st.write("أنا ميمو، كيف يمكنني مساعدتك اليوم؟")
-    user_input = st.text_input("اكتب رسالتك هنا:")
-    if user_input:
-        st.write(f"ميمو يرد: لقد استلمت رسالتك: {user_input}")
+    
+    # استخدام session_state عشان الذاكرة متتمسحش
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # عرض الرسائل القديمة
+    for message in st.session_state.messages:
+        with st.chat_message("user"):
+            st.markdown(message)
+
+    # استقبال رسالة جديدة
+    if prompt := st.chat_input("اكتب رسالتك هنا..."):
+        st.session_state.messages.append(prompt)
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        
+        # رد ميمو (هنا تقدر تغير الردود براحتك)
+        response = f"أهلاً يا محمد، لقد قلت لي: {prompt}"
+        with st.chat_message("assistant"):
+            st.markdown(response)
 
 elif option == "إعدادات":
-    st.write("هنا يمكنك تغيير إعدادات ميمو لاحقاً.")
+    st.write("إعدادات ميمو قيد التطوير.")
