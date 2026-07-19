@@ -62,4 +62,4 @@ if prompt := st.chat_input("تحدث مع ميمو..."):
             # حفظ في ذاكرة الجلسة
             st.session_state.messages.append({"role": "assistant", "content": reply})
         except Exception as e:
-            st.error(f"حدث خطأ أثناء الاتصال: {e}")
+            s
