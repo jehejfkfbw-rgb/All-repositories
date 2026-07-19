@@ -3,7 +3,7 @@ import streamlit as st
 # 1. إعدادات الصفحة
 st.set_page_config(page_title="ميمو", page_icon="🤖")
 
-# 2. كود إخفاء العلامة المائية والـ Menu والقائمة اللي تحت
+# 2. كود إخفاء العلامة المائية والـ Menu
 hide_style = """
     <style>
     #MainMenu {visibility: hidden;}
@@ -29,4 +29,4 @@ if option == "دردشة":
         st.write(f"ميمو يرد: لقد استلمت رسالتك: {user_input}")
 
 elif option == "إعدادات":
-    st.write("هنا يمكنك تغيير إعدادات ميمو لاحقاً."
+    st.write("هنا يمكنك تغيير إعدادات ميمو لاحقاً.")
