@@ -1,3 +1,2 @@
 streamlit
-google-generativeai
-pytz
+g4f
