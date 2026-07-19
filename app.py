@@ -1,9 +1,9 @@
 import streamlit as st
 
-# إعدادات الصفحة
+# 1. إعدادات الصفحة
 st.set_page_config(page_title="ميمو", page_icon="🤖")
 
-# كود إخفاء العلامة المائية والـ Menu
+# 2. كود إخفاء العلامة المائية والـ Menu والقائمة اللي تحت
 hide_style = """
     <style>
     #MainMenu {visibility: hidden;}
@@ -11,15 +11,15 @@ hide_style = """
     header {visibility: hidden;}
     </style>
     """
-st.markdown(hide_style, unsafe_html=True)
+st.markdown(hide_style, unsafe_allow_html=True)
 
-# لوحة التحكم الجانبية
+# 3. محتوى لوحة التحكم الجانبية
 with st.sidebar:
     st.title("🤖 لوحة تحكم ميمو")
     st.write("أهلاً بك في ميمو المطور.")
     option = st.selectbox("اختار المهمة:", ["دردشة", "إعدادات"])
 
-# محتوى الصفحة
+# 4. محتوى الصفحة الرئيسي
 st.title("أهلاً بك في ميمو")
 
 if option == "دردشة":
@@ -29,4 +29,4 @@ if option == "دردشة":
         st.write(f"ميمو يرد: لقد استلمت رسالتك: {user_input}")
 
 elif option == "إعدادات":
-    st.write("هنا يمكنك تغيير إعدادات ميمو لاحقاً.")
+    st.write("هنا يمكنك تغيير إعدادات ميمو لاحقاً."
