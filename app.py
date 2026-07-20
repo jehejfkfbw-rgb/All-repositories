@@ -4,13 +4,13 @@ import google.generativeai as genai
 # إعداد الصفحة
 st.set_page_config(page_title="ميمو", layout="centered")
 
-# إعداد الـ API Key من الـ Secrets بأمان
+# قراءة المفتاح من الـ Secrets بأمان
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel('gemini-pro')
 except Exception as e:
-    st.error("لم يتم العثور على الـ API Key في الـ Secrets. تأكد من إضافته هناك.")
+    st.error("خطأ: تأكد من إضافة GEMINI_API_KEY في صفحة الـ Secrets.")
     st.stop()
 
 st.title("🤖 ميمو: السيستم الذكي")
