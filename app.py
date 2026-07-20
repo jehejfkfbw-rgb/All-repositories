@@ -2,17 +2,16 @@ import streamlit as st
 from datetime import datetime
 
 # إعداد الواجهة
-st.set_page_config(page_title="سيستم ميمو", layout="wide")
+st.set_page_config(page_title="ميمو سيستم", layout="wide")
 
-st.title("🤖 ميمو: السيستم الخاص بمحمد عادل")
+st.title("🤖 ميمو: السيستم الذكي")
 
-# التبويبات
+# إنشاء التبويبات
 tab1, tab2, tab3 = st.tabs(["💬 ميمو الذكي", "✅ المهام", "💻 مكتبة الأكواد"])
 
-# --- تبويب ميمو الذكي ---
+# --- تبويب ميمو الذكي (الرئيسي) ---
 with tab1:
     st.subheader("مساعدك الشخصي")
-    
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
@@ -26,28 +25,22 @@ with tab1:
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            # تحويل النص لـ lowercase عشان ميمو يفهم الأوامر بسهولة
             text = prompt.lower()
-            
             if "الساعة" in text or "الوقت" in text:
                 now = datetime.now().strftime("%I:%M %p")
-                response = f"يا محمد، الوقت الآن هو {now} بتوقيت مصر."
-            elif "كورة" in text or "ماتش" in text:
-                response = "أنا جاهز يا بطل! أي فريق تحب نتابع أخبار أو مواعيد مبارياته؟"
-            elif "يومك" in text or "كيف حالك" in text:
-                response = "أنا بخير يا محمد، السيستم يعمل بكفاءة وأنا جاهز لتنظيم يومك ومذاكرتك!"
+                response = f"الوقت الآن هو {now} بتوقيت مصر."
             else:
-                response = "أهلاً يا محمد، أنا السيستم الخاص بك، كيف يمكنني مساعدتك في يومك اليوم؟"
+                response = "أهلاً بك! أنا ميمو، كيف يمكنني مساعدتك اليوم؟"
             
             st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
 
-# --- تبويب المهام ---
+# --- تبويب المهام (قيد التطوير) ---
 with tab2:
     st.subheader("قائمة المهام")
-    st.write("السيستم الخاص بك جاهز لإضافة مهامك اليومية.")
+    st.info("⚠️ هذا القسم قيد التطوير حالياً، انتظر التحديثات القادمة!")
 
-# --- تبويب الأكواد ---
+# --- تبويب الأكواد (قيد التطوير) ---
 with tab3:
     st.subheader("مكتبة الأكواد")
-    st.write("مساحة مخصصة لحفظ أكوادك البرمجية.")
+    st.warning("🚧 هذا القسم قيد التطوير حالياً، ترقبوا الإضافات قريباً!")
