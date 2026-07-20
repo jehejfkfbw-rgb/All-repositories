@@ -1,38 +1,47 @@
 import streamlit as st
-from g4f.client import Client
+from datetime import datetime
 
-# تصميم الواجهة (Custom CSS)
-st.markdown("""
-    <style>
-    .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
-    .chat-message { padding: 1.5rem; border-radius: 0.5rem; margin-bottom: 1rem; }
-    </style>
-""", unsafe_allow_html=True)
+# إعداد الواجهة
+st.set_page_config(page_title="سيستم ميمو الخاص", layout="wide")
 
-st.title("🤖 ميمو: المساعد الذكي")
+st.title("🤖 ميمو: السيستم الخاص بمحمد عادل")
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# التبويبات
+tab1, tab2, tab3 = st.tabs(["💬 ميمو الذكي", "✅ المهام", "💻 مكتبة الأكواد"])
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+# --- تبويب ميمو الذكي ---
+with tab1:
+    st.subheader("مساعدك الشخصي")
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-if prompt := st.chat_input("تحدث مع ميمو..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-    with st.chat_message("assistant"):
-        with st.spinner("ميمو يفكر..."):
-            try:
-                client = Client()
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": prompt}],
-                )
-                reply = response.choices[0].message.content
-                st.markdown(reply)
-                st.session_state.messages.append({"role": "assistant", "content": reply})
-            except Exception:
-                st.error("عذراً، ميمو يحتاج لحظة للاتصال. حاول مرة أخرى!")
+    if prompt := st.chat_input("تحدث مع ميمو..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        with st.chat_message("assistant"):
+            # منطق السيستم الخاص
+            if "الساعة" in prompt or "الوقت" in prompt:
+                now = datetime.now().strftime("%I:%M %p")
+                response = f"يا محمد، الوقت الآن هو {now} بتوقيت مصر."
+            elif "كورة" in prompt or "ماتش" in prompt:
+                response = "أنا جاهز! أي فريق تحب نتابع نتائجه اليوم؟"
+            else:
+                response = "أهلاً يا محمد، أنا السيستم الخاص بك، كيف يمكنني تنظيم يومك اليوم؟"
+            
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+
+# --- تبويب المهام والأكواد ---
+with tab2:
+    st.subheader("قائمة المهام")
+    st.write("السيستم الخاص بك يعمل الآن!")
+
+with tab3:
+    st.subheader("مكتبة الأكواد")
+    st.write("مساحة مخصصة لك فقط.")
