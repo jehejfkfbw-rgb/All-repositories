@@ -1,17 +1,19 @@
 import streamlit as st
-from datetime import datetime
+import google.generativeai as genai
 
-# إعداد الواجهة
-st.set_page_config(page_title="ميمو سيستم", layout="wide")
+# إعداد الـ API باستخدام الـ Secrets
+try:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    model = genai.GenerativeModel('gemini-pro')
+except:
+    st.error("تأكد من وضع الـ API Key في الـ Secrets")
 
+st.set_page_config(page_title="ميمو الذكي", layout="wide")
 st.title("🤖 ميمو: السيستم الذكي")
 
-# إنشاء التبويبات
 tab1, tab2, tab3 = st.tabs(["💬 ميمو الذكي", "✅ المهام", "💻 مكتبة الأكواد"])
 
-# --- تبويب ميمو الذكي (الرئيسي) ---
 with tab1:
-    st.subheader("مساعدك الشخصي")
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
@@ -25,22 +27,15 @@ with tab1:
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            text = prompt.lower()
-            if "الساعة" in text or "الوقت" in text:
-                now = datetime.now().strftime("%I:%M %p")
-                response = f"الوقت الآن هو {now} بتوقيت مصر."
-            else:
-                response = "أهلاً بك! أنا ميمو، كيف يمكنني مساعدتك اليوم؟"
-            
-            st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            try:
+                response = model.generate_content(prompt)
+                st.markdown(response.text)
+                st.session_state.messages.append({"role": "assistant", "content": response.text})
+            except Exception as e:
+                st.error("حدث خطأ في الاتصال بجوجل، تأكد من الـ API Key.")
 
-# --- تبويب المهام (قيد التطوير) ---
 with tab2:
-    st.subheader("قائمة المهام")
     st.info("⚠️ هذا القسم قيد التطوير حالياً، انتظر التحديثات القادمة!")
 
-# --- تبويب الأكواد (قيد التطوير) ---
 with tab3:
-    st.subheader("مكتبة الأكواد")
     st.warning("🚧 هذا القسم قيد التطوير حالياً، ترقبوا الإضافات قريباً!")
