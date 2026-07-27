@@ -20,8 +20,8 @@ TELEGRAM_BOT_TOKEN = "8394900129:AAENOZw1Zz0SNImSZB97ZKSMXUMudQRePg"
 TELEGRAM_CHAT_ID = "8672781771"          
 
 # بيانات الإيميل الخاص بك الذي ستقوم بالارسال منه
-SENDER_EMAIL = "jehejfkfbw@gmail.com"        
-SENDER_PASSWORD = "هنا_كلمة_مرور_التطبيق_الخاصة_بك"  # ضع هنا كلمة مرور التطبيق المكونة من 16 حرف الخاصة بحسابك
+SENDER_EMAIL = "ajakdjrjej@gmail.com"        
+SENDER_PASSWORD = "هنا_كلمة_مرور_التطبيق_الخاصة_بك"  # ضع هنا كلمة مرور التطبيق (App Password) المكونة من 16 حرف
 
 st.markdown("""
     <style>
@@ -137,7 +137,7 @@ if not st.session_state.logged_in:
                     
                     if sent_success:
                         st.session_state.step = "verify"
-                        st.success("تم إرسال رسالة الترحيب ورمز التحقق إلى بريدك الإلكتروني بنجاح!")
+                        st.success("تم إرسال رسالة الترحيب ورمز التحقق (4 أرقام) إلى بريدك الإلكتروني بنجاح!")
                         st.rerun()
                     else:
                         st.error("فشل إرسال البريد الإلكتروني، تأكد من إدخال كلمة مرور التطبيق (App Password) بشكل صحيح في الكود.")
