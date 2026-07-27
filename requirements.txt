@@ -1,3 +1,5 @@
 g4f
 streamlit
 pillow
+gTTS
+streamlit-mic-recorder
