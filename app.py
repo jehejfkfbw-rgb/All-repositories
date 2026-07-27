@@ -66,6 +66,10 @@ current_user_email = "Mohamed Adel (عادل أحمد)"
 st.sidebar.title("🤖 ميمو AI - InnovaSoft")
 st.sidebar.success(f"مرحباً: {current_user_email}")
 
+if st.sidebar.button("🗑️ مسح محادثة الشات"):
+    st.session_state.messages = []
+    st.rerun()
+
 st.sidebar.markdown("---")
 menu_options = [
     "💬 الشات الذكي", 
@@ -75,32 +79,39 @@ menu_options = [
 app_mode = st.sidebar.radio("اختر القسم:", menu_options)
 
 if app_mode == "💬 الشات الذكي":
-    st.title("💬 ميمو - الشات الذكي")
+    st.title("💬 ميمو - الشات الذكي السريع")
     st.write(f"أهلاً بك يا {current_user_email}، اسأل عن أي شيء وسأرد عليك فوراً!")
     st.markdown("---")
 
-    if "chat_session" not in st.session_state:
-        st.session_state.chat_session = model.start_chat(history=[])
+    # تهيئة الرسائل بطريقة قائمة بسيطة ومستقرة تمنع التعليق
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {"role": "assistant", "content": "أهلاً يا فنان! أنا جاهز، اكتب سؤالك وهيجيلك الرد في ثانية."}
+        ]
 
-    for message in st.session_state.chat_session.history:
-        role = "user" if message.role == "user" else "assistant"
-        with st.chat_message(role):
-            st.markdown(message.parts[0].text)
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
     if user_prompt := st.chat_input("اكتب سؤالك أو بحثك هنا..."):
         send_telegram_notification(current_user_email, f"البحث عن: {user_prompt}")
         
+        st.session_state.messages.append({"role": "user", "content": user_prompt})
         with st.chat_message("user"):
             st.markdown(user_prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("ميمو بيفكر..."):
+            with st.spinner("ميمو بيكتب الرد..."):
                 try:
-                    response = st.session_state.chat_session.send_message(user_prompt)
+                    # استجابة مباشرة سريعة وآمنة من نموذج جيمناي
+                    response = model.generate_content(user_prompt)
                     bot_reply = response.text
                 except Exception as e:
-                    bot_reply = f"عذراً تأكد من مفتاح الجيمناي (API Key): {e}"
+                    bot_reply = f"عذراً حدث خطأ، تأكد من مفتاح الجيمناي (API Key): {e}"
+                
                 st.markdown(bot_reply)
+        
+        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
 
 elif app_mode == "🎨 توليد الصور بالذكاء الاصطناعي":
     st.title("🎨 ميمو - استوديو توليد الصور")
