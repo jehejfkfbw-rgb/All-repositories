@@ -1,194 +1,253 @@
 import streamlit as st
-import datetime
+import g4f
+from PIL import Image, ImageEnhance
+import urllib.parse
+from gtts import gTTS
+import os
+from datetime import datetime
+import pytz
 import requests
-import time
-from datetime import datetime as dt, timedelta
 
-# 1. إعدادات الصفحة
-st.set_page_config(
-    page_title="تطبيق ميمو - مواقيت الصلاة والأذان",
-    page_icon="🕌",
-    layout="wide"
-)
+# ==========================================
+# 1. إعدادات تطبيق ميمو الذكي
+# ==========================================
+st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="wide")
 
-# 2. تهيئة سجل البحث
-if "search_history" not in st.session_state:
-    st.session_state.search_history = []
-
-# --- تنسيق CSS للواجهة والعداد التنازلي ---
 st.markdown("""
     <style>
-    .stApp {
-        direction: rtl;
-        text-align: right;
+    [data-testid="stSidebar"] {
+        background-color: #f4f4f4;
     }
-    .countdown-box {
-        background: linear-gradient(135deg, #1e2130, #2a2e42);
-        color: #00ffcc;
-        padding: 15px;
-        border-radius: 12px;
-        text-align: center;
-        font-size: 24px;
-        font-weight: bold;
-        border: 1px solid #00ffcc;
-        box-shadow: 0 4px 10px rgba(0, 255, 204, 0.2);
-        margin-bottom: 15px;
+    h1, h2, h3 {
+        color: #C8102E;
     }
-    .prayer-card {
-        background-color: #1e2130;
-        padding: 12px;
-        border-radius: 10px;
-        border: 1px solid #313549;
-        margin-bottom: 10px;
+    .stButton>button {
+        background-color: #C8102E;
+        color: white;
+        border-radius: 5px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# دالة لجلب مواقيت الصلاة
-@st.cache_data(ttl=3600)
-def get_prayer_times(country="Egypt"):
+# دالة تحويل النص إلى صوت
+def text_to_speech(text):
     try:
-        url = f"https://api.aladhan.com/v1/timingsByCity?city=Cairo&country={country}&method=5"
-        res = requests.get(url).json()
-        return res["data"]["timings"]
+        tts = gTTS(text=text, lang='ar', slow=False)
+        audio_file = "memo_voice.mp3"
+        tts.save(audio_file)
+        return audio_file
     except:
-        return {
-            "Fajr": "04:30",
-            "Dhuhr": "12:00",
-            "Asr": "15:30",
-            "Maghrib": "18:45",
-            "Isha": "20:15"
-        }
+        return None
 
-# حساب الصلاة القادمة والوقت المتبقي لها
-def get_next_prayer(prayer_times):
-    now = dt.now()
-    today_str = now.strftime("%Y-%m-%d")
-    
-    prayers = {
-        "الفجر": prayer_times.get('Fajr'),
-        "الظهر": prayer_times.get('Dhuhr'),
-        "العصر": prayer_times.get('Asr'),
-        "المغرب": prayer_times.get('Maghrib'),
-        "العشاء": prayer_times.get('Isha')
+# دالة جلب مواقيت الصلاة من API
+def get_prayer_times(country):
+    cities = {
+        'مصر': 'Cairo', 'السعودية': 'Riyadh', 'الإمارات': 'Dubai',
+        'الكويت': 'Kuwait', 'قطر': 'Doha', 'البحرين': 'Manama',
+        'عمان': 'Muscat', 'الأردن': 'Amman', 'فلسطين': 'Jerusalem',
+        'لبنان': 'Beirut', 'سوريا': 'Damascus', 'العراق': 'Baghdad',
+        'اليمن': 'Sana a', 'السودان': 'Khartoum', 'ليبيا': 'Tripoli',
+        'تونس': 'Tunis', 'الجزائر': 'Algiers', 'المغرب': 'Rabat',
+        'موريتانيا': 'Nouakchott', 'أمريكا': 'New York'
     }
+    city = cities.get(country, 'Cairo')
+    try:
+        url = f"http://api.aladhan.com/v1/timingsByCity?city={city}&country={country}&method=5"
+        response = requests.get(url)
+        data = response.json()
+        if data['code'] == 200:
+            return data['data']['timings']
+    except:
+        pass
+    return None
+
+# ==========================================
+# 2. القائمة الجانبية (Sidebar - مواقيت الصلاة والعد التنازلي)
+# ==========================================
+st.sidebar.title("🤖 ميمو AI - شركة InnovaSoft")
+st.sidebar.write("مرحباً بك في ميمو الذكي")
+st.sidebar.markdown("---")
+
+app_mode = st.sidebar.radio("اختر القسم:", [
+    "💬 الشات الصوتي الذكي", 
+    "🎨 توليد الصور بالذكاء الاصطناعي", 
+    "✏️ محرر الصور والفلاتر"
+])
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("🕌 مواقيت الصلاة والعد التنازلي")
+selected_country_sidebar = st.sidebar.selectbox("اختر الدولة:", [
+    'مصر', 'السعودية', 'الإمارات', 'الكويت', 'قطر', 'البحرين', 'عمان', 
+    'الأردن', 'فلسطين', 'لبنان', 'سوريا', 'العراق', 'اليمن', 'السودان', 
+    'ليبيا', 'تونس', 'الجزائر', 'المغرب', 'موريتانيا', 'أمريكا'
+])
+
+timezones_dict = {
+    'مصر': 'Africa/Cairo', 'السعودية': 'Asia/Riyadh', 'الإمارات': 'Asia/Dubai',
+    'الكويت': 'Asia/Kuwait', 'قطر': 'Asia/Qatar', 'البحرين': 'Asia/Bahrain',
+    'عمان': 'Asia/Muscat', 'الأردن': 'Asia/Amman', 'فلسطين': 'Asia/Gaza',
+    'لبنان': 'Asia/Beirut', 'سوريا': 'Asia/Damascus', 'العراق': 'Asia/Baghdad',
+    'اليمن': 'Asia/Aden', 'السودان': 'Africa/Khartoum', 'ليبيا': 'Africa/Tripoli',
+    'تونس': 'Africa/Tunis', 'الجزائر': 'Africa/Algiers', 'المغرب': 'Africa/Casablanca',
+    'موريتانيا': 'Africa/Nouakchott', 'أمريكا': 'America/New_York'
+}
+
+current_tz = pytz.timezone(timezones_dict.get(selected_country_sidebar, 'Africa/Cairo'))
+now = datetime.now(current_tz)
+sidebar_time = now.strftime('%I:%M %p').replace('AM', 'صباحاً').replace('PM', 'مساءً')
+st.sidebar.write(f"⏰ الوقت الحالي: **{sidebar_time}**")
+
+timings = get_prayer_times(selected_country_sidebar)
+if timings:
+    st.sidebar.markdown(f"""
+    * 🌅 **الفجر:** {timings.get('Fajr')}
+    * ☀️ **الظهر:** {timings.get('Dhuhr')}
+    * 🌤️ **العصر:** {timings.get('Asr')}
+    * 🌇 **المغرب:** {timings.get('Maghrib')}
+    * 🌙 **العشاء:** {timings.get('Isha')}
+    """)
     
-    for name, p_time in prayers.items():
-        prayer_dt = dt.strptime(f"{today_str} {p_time}", "%Y-%m-%d %H:%M")
-        if prayer_dt > now:
-            return name, prayer_dt
+    current_minutes = now.hour * 60 + now.minute
+    prayer_list = [
+        ("الفجر", timings.get('Fajr')),
+        ("الظهر", timings.get('Dhuhr')),
+        ("العصر", timings.get('Asr')),
+        ("المغرب", timings.get('Maghrib')),
+        ("العشاء", timings.get('Isha'))
+    ]
+    
+    next_prayer_name = "الفجر (غداً)"
+    next_prayer_diff = 99999
+    
+    for p_name, p_time_str in prayer_list:
+        if p_time_str:
+            p_hour, p_min = map(int, p_time_str.split(':'))
+            p_total_minutes = p_hour * 60 + p_min
+            if p_total_minutes > current_minutes:
+                diff = p_total_minutes - current_minutes
+                if diff < next_prayer_diff:
+                    next_prayer_diff = diff
+                    next_prayer_name = p_name
+                    
+    hours_left = next_prayer_diff // 60
+    mins_left = next_prayer_diff % 60
+    if next_prayer_diff != 99999:
+        st.sidebar.info(f"⏳ باقي على صلاة **{next_prayer_name}**: حوالي {hours_left} ساعة و {mins_left} دقيقة")
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("🔊 **تشغيل صوت الأذان (الله أكبر):**")
+adhan_audio_url = "https://www.islamcan.com/audio/adhan/azan01.mp3"
+st.sidebar.audio(adhan_audio_url, format="audio/mp3")
+
+# ==========================================
+# 3. قسم الشات الصوتي الذكي
+# ==========================================
+if app_mode == "💬 الشات الصوتي الذكي":
+    st.title("🤖 مرحباً بك في ميمو الذكي")
+    st.write("اسأل عن مواقيت الصلاة، الوقت، أو اسألني من طورني وسأحفظ محادثتنا بالكامل!")
+    st.markdown("---")
+
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    if st.button("🗑️ مسح الذاكرة وبدء محادثة جديدة"):
+        st.session_state.chat_history = []
+        st.rerun()
+
+    for idx, message in enumerate(st.session_state.chat_history):
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            if message["role"] == "assistant" and "audio" in message:
+                st.audio(message["audio"], format="audio/mp3")
+
+    if user_prompt := st.chat_input("اكتب سؤالك هنا..."):
+        lower_prompt = user_prompt.lower()
+        
+        # الرد على المطور واسم الشركة
+        if "طورك" in user_prompt or "صنعك" in user_prompt or "عملك" in user_prompt or "من أنت" in user_prompt or "انت مين" in user_prompt or "صاحب الشركة" in user_prompt or "مين صاحبك" in user_prompt:
+            bot_reply = "The application was created by the owner of the company, Mohamed Adel, through Inovasoft company."
             
-    # إذا انتهت صلوات اليوم، فالصلاة القادمة هي فجر الغد
-    tomorrow_str = (now + timedelta(days=1)).strftime("%Y-%m-%d")
-    fajr_tomorrow = dt.strptime(f"{tomorrow_str} {prayer_times.get('Fajr')}", "%Y-%m-%d %H:%M")
-    return "الفجر", fajr_tomorrow
-
-
-# ---------------- تقسيم الواجهة (يمين وشمال) ----------------
-col_main, col_left = st.columns([2.5, 1.2])
-
-# ==========================================
-# العمود الأيسر (أعلى الشمال: الأذان والعداد + السجل)
-# ==========================================
-with col_left:
-    st.markdown("### 🕌 مواقيت الصلاة والأذان")
-    
-    # اختيار الدولة
-    country = st.selectbox("اختر الدولة لمعرفة الوقت:", ["مصر", "السعودية", "الإمارات"], index=0)
-    country_code = "Egypt" if country == "مصر" else ("Saudi Arabia" if country == "السعودية" else "UAE")
-    
-    prayer_times = get_prayer_times(country_code)
-    next_prayer_name, next_prayer_dt = get_next_prayer(prayer_times)
-    
-    # حساب المتبقي للصلاة القادمة
-    now = dt.now()
-    time_diff = next_prayer_dt - now
-    total_seconds = int(time_diff.total_seconds())
-    
-    # عرض العداد التنازلي الرقمي (النزول حتى يصل 00:00:00)
-    if total_seconds > 0:
-        hours, remainder = divmod(total_seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        timer_text = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-        
-        st.markdown(f"""
-        <div class="countdown-box">
-            ⏳ متبقي على أذان <b>{next_prayer_name}</b><br>
-            <span style="font-size: 32px;">{timer_text}</span>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        # عند الوصول إلى 00:00:00 يشتغل الأذان فوراً
-        st.markdown(f"""
-        <div class="countdown-box" style="color: #ff4b4b; border-color: #ff4b4b;">
-            🔔 حان الآن موعد أذان {next_prayer_name}! 00:00:00
-        </div>
-        """, unsafe_allow_html=True)
-        st.audio("https://www.islamcan.com/audio/adhan/azan1.mp3", autoplay=True)
-
-    # جدول مواقيت الصلاة
-    st.markdown(f"""
-    <div class="prayer-card">
-        <b>⏰ الوقت الحالي:</b> {now.strftime("%I:%M:%S %p")}<br><hr style='margin:8px 0;'>
-        <b>🌅 الفجر:</b> {prayer_times.get('Fajr')}<br>
-        <b>☀️ الظهر:</b> {prayer_times.get('Dhuhr')}<br>
-        <b>🌤️ العصر:</b> {prayer_times.get('Asr')}<br>
-        <b>🌆 المغرب:</b> {prayer_times.get('Maghrib')}<br>
-        <b>🌌 العشاء:</b> {prayer_times.get('Isha')}
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.write("---")
-
-    # 📜 قسم سجل البحث (أسفل الأذان)
-    st.subheader("📜 سجل البحث")
-    if st.session_state.search_history:
-        for idx, item in enumerate(st.session_state.search_history):
-            st.markdown(f"{idx+1}. **{item}**")
-        if st.button("تفريغ السجل 🗑️"):
-            st.session_state.search_history = []
-            st.rerun()
-    else:
-        st.caption("لا يوجد بحث سابق حتى الآن.")
-
-
-# ==========================================
-# العمود الأيمن (المحتوى الرئيسي ووحدة الكتابة)
-# ==========================================
-with col_main:
-    st.title("🤖 إنتاج - AI ميمو InnovaSoft")
-    st.write("شات ذكي صوتي + توليد صور + محرر")
-    
-    st.subheader("🔎 البحث في التطبيق")
-    search_query = st.text_input("ادخل كلمة للبحث:", key="main_search")
-    if st.button("بحث 🔍"):
-        if search_query.strip() != "":
-            st.session_state.search_history.insert(0, search_query.strip())
-            st.success(f"تم تسجيل البحث: {search_query}")
-            st.rerun()
-
-    st.write("---")
-
-    # جهة الكتابة واسأل ميمو
-    st.subheader("💬 اسأل ميمو")
-    user_question = st.text_input("اكتب سؤالك هنا (مثال: مين صاحب الشركة؟):", key="ask_memo")
-
-    if user_question:
-        q_lower = user_question.lower()
-        owner_keywords = ["مين صاحبك", "من صاحبك", "صاحب الشركة", "مين المطور", "who created", "who is the owner"]
-        
-        if any(keyword in q_lower for keyword in owner_keywords):
-            st.success("🤖 **Memo:** This application was created and developed by Mohamed Adel Mohamed Ali.")
+        elif "صلاة" in user_prompt or "أذان" in user_prompt or "مواقيت" in user_prompt:
+            found_country = 'مصر'
+            for country in timezones_dict.keys():
+                if country in user_prompt:
+                    found_country = country
+                    break
+            p_times = get_prayer_times(found_country)
+            if p_times:
+                bot_reply = f"مواقيت الصلاة اليوم في {found_country}:\n- الفجر: {p_times.get('Fajr')}\n- الظهر: {p_times.get('Dhuhr')}\n- العصر: {p_times.get('Asr')}\n- المغرب: {p_times.get('Maghrib')}\n- العشاء: {p_times.get('Isha')}"
+            else:
+                bot_reply = "عذراً، لم أستطع جلب مواقيت الصلاة الآن."
+                
         else:
-            st.info("🤖 **Memo:** أهلاً بك! أنا ميمو، يمكنك سؤالي عن مطور التطبيق أو مواقيت الصلاة.")
+            with st.spinner("جاري التفكير وتوليد الصوت..."):
+                try:
+                    messages_list = [{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_history]
+                    messages_list.append({"role": "user", "content": user_prompt})
+                    
+                    response = g4f.ChatCompletion.create(
+                        model=g4f.models.default,
+                        messages=messages_list,
+                    )
+                    bot_reply = str(response)
+                except Exception as e:
+                    bot_reply = f"عذراً حدث خطأ بسيط: {e}"
 
-    st.write("---")
+        st.session_state.chat_history.append({"role": "user", "content": user_prompt})
+        with st.chat_message("user"):
+            st.markdown(user_prompt)
 
-    # أقسام الخدمة
-    st.subheader(":اختر القسم")
-    section = st.radio("", ["الشات الصوتي الذكي 💬", "توليد الصور بالذكاء الاصطناعي 🎨", "محرر الصور والفلاتر ✏️"])
+        with st.chat_message("assistant"):
+            st.markdown(bot_reply)
+            audio_path = text_to_speech(bot_reply)
+            if audio_path:
+                st.audio(audio_path, format="audio/mp3")
+                st.session_state.chat_history.append({"role": "assistant", "content": bot_reply, "audio": audio_path})
+            else:
+                st.session_state.chat_history.append({"role": "assistant", "content": bot_reply})
 
+# ==========================================
+# 4. قسم توليد الصور بالذكاء الاصطناعي
+# ==========================================
+elif app_mode == "🎨 توليد الصور بالذكاء الاصطناعي":
+    st.title("🎨 ميمو - استوديو توليد الصور")
+    st.write("صف أي صورة تتخيلها وسيتم رسمها فوراً!")
+    st.markdown("---")
 
-# إعادة تحديث الصفحة كل ثانية ليعمل العداد التنازلي بشكل حي ومباشر
-time.sleep(1)
-st.rerun()
+    image_prompt = st.text_input("صف الصورة:", placeholder="مثال: مدينة مستقبلية مضيئة")
+
+    if st.button("توليد الصورة"):
+        if image_prompt:
+            with st.spinner("جاري رسم الصورة..."):
+                try:
+                    encoded_prompt = urllib.parse.quote(image_prompt)
+                    image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
+                    st.success("تم توليد الصورة بنجاح!")
+                    st.image(image_url, caption=image_prompt, use_column_width=True)
+                except Exception as e:
+                    st.error(f"خطأ: {e}")
+        else:
+            st.warning("الرجاء كتابة وصف للصورة أولاً.")
+
+# ==========================================
+# 5. قسم محرر الصور والفلاتر
+# ==========================================
+elif app_mode == "✏️ محرر الصور والفلاتر":
+    st.title("✏️ ميمو - محرر الصور")
+    st.write("ارفع صورتك وعدل إضاءتها وتباينها بلمسة زر.")
+    st.markdown("---")
+
+    file = st.file_uploader("اختر صورة...", type=["jpg", "png", "jpeg"])
+    if file:
+        img = Image.open(file)
+        st.image(img, caption="الصورة الأصلية", use_column_width=True)
+
+        st.sidebar.markdown("### أدوات التعديل")
+        brightness = st.sidebar.slider("الإضاءة", 0.1, 3.0, 1.0)
+        contrast = st.sidebar.slider("التباين", 0.1, 3.0, 1.0)
+
+        edited = ImageEnhance.Brightness(img).enhance(brightness)
+        edited = ImageEnhance.Contrast(edited).enhance(contrast)
+
+        st.subheader("الصورة النهائية:")
+        st.image(edited, caption="بعد التعديل", use_column_width=True)
