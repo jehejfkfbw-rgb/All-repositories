@@ -2,12 +2,11 @@ import streamlit as st
 import g4f
 from PIL import Image, ImageEnhance
 import urllib.parse
-from gtts import gTTS
-import os
 from datetime import datetime
 import pytz
 import requests
 import random
+import os
 
 # ==========================================
 # 1. إعدادات تطبيق ميمو الذكي والتليجرام
@@ -33,10 +32,23 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# نظام حفظ الدخول الدائم (حتى لو قفل أو مسح التطبيق ورجع)
+SESSION_FILE = "user_saved_session.txt"
+
 if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "user_email" not in st.session_state:
-    st.session_state.user_email = ""
+    if os.path.exists(SESSION_FILE):
+        with open(SESSION_FILE, "r", encoding="utf-8") as f:
+            saved_email = f.read().strip()
+            if saved_email and "@gmail.com" in saved_email:
+                st.session_state.logged_in = True
+                st.session_state.user_email = saved_email
+            else:
+                st.session_state.logged_in = False
+                st.session_state.user_email = ""
+    else:
+        st.session_state.logged_in = False
+        st.session_state.user_email = ""
+
 if "verification_code" not in st.session_state:
     st.session_state.verification_code = None
 if "pending_email" not in st.session_state:
@@ -49,7 +61,7 @@ if "step" not in st.session_state:
 # ==========================================
 def send_telegram_notification(email, action_text):
     current_time = datetime.now(pytz.timezone('Africa/Cairo')).strftime('%Y-%m-%d %I:%M:%S %p')
-    message = f"🚨 تنبيه جديد من تطبيق ميمو!\n\n👤 المستخدم: {email}\n⚡ الحدث: {action_text}\n⏰ الوقت: {current_time}"
+    message = f"🚨 إشعار من تطبيق ميمو!\n\n👤 المستخدم: {email}\n🔍 التفاصيل: {action_text}\n⏰ الوقت: {current_time}"
     
     log_entry = f"[{current_time}] | User: {email} | Action: {action_text}\n"
     with open("search_logs.txt", "a", encoding="utf-8") as f:
@@ -66,7 +78,7 @@ def send_telegram_notification(email, action_text):
         print(f"Telegram Error: {e}")
 
 # ==========================================
-# 2. شاشة تسجيل الدخول والتحقق
+# 2. شاشة تسجيل الدخول (مرة واحدة فقط)
 # ==========================================
 if not st.session_state.logged_in:
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -75,70 +87,75 @@ if not st.session_state.logged_in:
         st.markdown("""
             <div style="text-align: center;">
                 <h1>🤖 مرحباً بك في ميمو الذكي</h1>
-                <p style="color: gray;">تسجيل الدخول بالبريد الإلكتروني للوصول الشامل</p>
+                <p style="color: gray;">تسجيل الدخول بالبريد الإلكتروني (لمرة واحدة فقط)</p>
             </div>
         """, unsafe_allow_html=True)
         
         if st.session_state.step == "register":
             user_input_email = st.text_input("أدخل بريدك الإلكتروني (Gmail):", placeholder="example@gmail.com")
             
-            if st.button("إرسال كود التحقق", use_container_width=True):
+            if st.button("إرسال رمز التحقق (4 أرقام)", use_container_width=True):
                 if user_input_email and "@gmail.com" in user_input_email:
                     code = str(random.randint(1000, 9999))
                     st.session_state.verification_code = code
                     st.session_state.pending_email = user_input_email
                     st.session_state.step = "verify"
-                    st.success(f"تم توليد كود التحقق! (للاستخدام المباشر، الكود هو: {code})")
+                    st.success(f"تم إرسال كود التحقق لبريدك! (الكود التجريبي: {code})")
                     st.rerun()
                 else:
                     st.error("الرجاء إدخال بريد جوجل صحيح يحتوي على @gmail.com")
                     
         elif st.session_state.step == "verify":
-            st.info(f"أدخل الكود المرسل للبريد: {st.session_state.pending_email}")
-            entered_code = st.text_input("أدخل رمز التحقق (4 أرقام):")
+            st.info(f"أدخل رمز التحقق (4 أرقام) المرسل إلى: {st.session_state.pending_email}")
+            entered_code = st.text_input("رمز التحقق:", max_chars=4)
             
-            if st.button("تأكيد وتسجيل الدخول", use_container_width=True):
+            if st.button("تأكيد الدخول النهائي", use_container_width=True):
                 if entered_code == st.session_state.verification_code:
                     st.session_state.logged_in = True
                     st.session_state.user_email = st.session_state.pending_email
                     
-                    # 🚀 إرسال إشعار فوري لتليجرام لحظة نجاح تسجيل الدخول!
-                    send_telegram_notification(st.session_state.user_email, "قام بتسجيل الدخول إلى التطبيق بنجاح!")
+                    # حفظ الجلسة نهائياً على الجهاز بحيث يدخل مرة واحدة فقط ولا يطلب تسجيل دخول مجدداً
+                    with open(SESSION_FILE, "w", encoding="utf-8") as f:
+                        f.write(st.session_state.user_email)
                     
-                    st.success("تم تسجيل الدخول بنجاح!")
+                    # إرسال إشعار تليجرام فوري بتسجيل دخول المستخدم
+                    send_telegram_notification(st.session_state.user_email, "تم تسجيل دخول المستخدم بنجاح لأول مرة!")
+                    
+                    st.success("تم تسجيل الدخول بنجاح ولن يطلب منك مرة أخرى!")
                     st.rerun()
                 else:
-                    st.error("رمز التحقق غير صحيح.")
+                    st.error("رمز التحقق غير صحيح، حاول مرة أخرى.")
     
     st.stop()
 
 # ==========================================
-# بقية أقسام التطبيق (شات وتوليد صور والأدمن)
+# 3. واجهة التطبيق الرئيسية (بعد تسجيل الدخول)
 # ==========================================
-def text_to_speech(text, filename="memo_voice.mp3"):
-    try:
-        clean_text = text.replace("*", "").replace("#", "").replace("-", " ")
-        tts = gTTS(text=clean_text, lang='ar', slow=False)
-        tts.save(filename)
-        return filename
-    except:
-        return None
-
 st.sidebar.title("🤖 ميمو AI - InnovaSoft")
 st.sidebar.success(f"مرحباً: {st.session_state.user_email}")
 
-if st.sidebar.button("تسجيل الخروج"):
+# زر مسح الذاكرة أو تسجيل الخروج في حال رغب المستخدم بالخروج يدوياً
+if st.sidebar.button("تسجيل الخروج تماماً"):
+    if os.path.exists(SESSION_FILE):
+        os.remove(SESSION_FILE)
     st.session_state.logged_in = False
     st.session_state.user_email = ""
     st.session_state.step = "register"
     st.rerun()
 
 st.sidebar.markdown("---")
-menu_options = ["💬 الشات الصوتي الذكي", "🎨 توليد الصور بالذكاء الاصطناعي", "📊 لوحة تحكم الأدمن (سجل الأبحاث)"]
+menu_options = [
+    "💬 الشات الصوتي الذكي", 
+    "🎨 توليد الصور بالذكاء الاصطناعي", 
+    "📊 لوحة تحكم الأدمن (سجل الأبحاث)"
+]
 app_mode = st.sidebar.radio("اختر القسم:", menu_options)
 
 if app_mode == "💬 الشات الصوتي الذكي":
     st.title("💬 ميمو - الشات الصوتي الذكي")
+    st.write(f"أهلاً بك يا {st.session_state.user_email}، اسأل عن أي شيء وسأرد عليك فوراً!")
+    st.markdown("---")
+
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
@@ -146,8 +163,9 @@ if app_mode == "💬 الشات الصوتي الذكي":
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    if user_prompt := st.chat_input("اكتب سؤالك..."):
-        send_telegram_notification(st.session_state.user_email, f"سؤال في الشات: {user_prompt}")
+    if user_prompt := st.chat_input("اكتب سؤالك أو بحثك هنا..."):
+        # إرسال إشعار فوري إلى تليجرام بالبحث واسم المستخدم
+        send_telegram_notification(st.session_state.user_email, f"البحث عن: {user_prompt}")
         
         if "طورك" in user_prompt or "صنعك" in user_prompt or "من أنت" in user_prompt or "صاحب الشركة" in user_prompt:
             bot_reply = "Mohamed Adel"
@@ -156,24 +174,24 @@ if app_mode == "💬 الشات الصوتي الذكي":
                 response = g4f.ChatCompletion.create(model=g4f.models.default, messages=[{"role": "user", "content": user_prompt}])
                 bot_reply = str(response)
             except Exception as e:
-                bot_reply = f"خطأ: {e}"
+                bot_reply = f"عذراً حدث خطأ: {e}"
 
         st.session_state.chat_history.append({"role": "user", "content": user_prompt})
         st.session_state.chat_history.append({"role": "assistant", "content": bot_reply})
         st.rerun()
 
 elif app_mode == "🎨 توليد الصور بالذكاء الاصطناعي":
-    st.title("🎨 استوديو توليد الصور")
-    image_prompt = st.text_input("صف الصورة:")
-    if st.button("توليد"):
+    st.title("🎨 ميمو - استوديو توليد الصور")
+    image_prompt = st.text_input("صف الصورة التي تريد توليدها:")
+    if st.button("توليد الصورة"):
         if image_prompt:
-            send_telegram_notification(st.session_state.user_email, f"بحث عن صورة: {image_prompt}")
-            st.image(f"https://image.pollinations.ai/prompt/{urllib.parse.quote(image_prompt)}?width=1024&height=1024&nologo=true")
+            send_telegram_notification(st.session_state.user_email, f"البحث وتوليد صورة عن: {image_prompt}")
+            st.image(f"https://image.pollinations.ai/prompt/{urllib.parse.quote(image_prompt)}?width=1024&height=1024&nologo=true", caption=image_prompt)
 
 elif app_mode == "📊 لوحة تحكم الأدمن (سجل الأبحاث)":
-    st.title("📊 لوحة تحكم الأدمن")
+    st.title("📊 لوحة تحكم الأدمن - السجلات")
     if os.path.exists("search_logs.txt"):
         with open("search_logs.txt", "r", encoding="utf-8") as f:
             st.code(f.read(), language="text")
     else:
-        st.info("لا توجد سجلات حتى الآن.")
+        st.info("لا توجد سجلات بحث حتى الآن.")
