@@ -1,6 +1,6 @@
 streamlit
 requests
 pillow
-gTTS
+gtts
 pytz
 google-generativeai
