@@ -14,9 +14,9 @@ import streamlit.components.v1 as components
 # ==========================================
 st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="wide")
 
-# 🔴 إعدادات تليجرام الخاصة بك
-TELEGRAM_BOT_TOKEN = "ضع_هنا_توكن_البوت"      # توكن البوت الذي ستنشئه من @BotFather
-TELEGRAM_CHAT_ID = "8672781771"              # رقم الـ ID الخاص بك الذي قمت بإحضاره
+# 🔴 تم وضع التوكن الجديد هنا
+TELEGRAM_BOT_TOKEN = "8394900129:AAENOZw1Zz0SNImSZB97ZKSMXUMudQRePg"     
+TELEGRAM_CHAT_ID = "ضع_هنا_آي دي_الحساب"          # الرقم اللي جابته من @userinfobot
 
 st.markdown("""
     <style>
@@ -53,8 +53,8 @@ def send_telegram_notification(email, query_text):
     with open("search_logs.txt", "a", encoding="utf-8") as f:
         f.write(log_entry)
         
-    # إرسال رسالة تليجرام فورية عند إضافة توكن البوت
-    if TELEGRAM_BOT_TOKEN != "ضع_هنا_توكن_البوت":
+    # إرسال رسالة تليجرام فورية
+    if TELEGRAM_BOT_TOKEN != "ضع_هنا_توكن_البوت" and TELEGRAM_CHAT_ID != "ضع_هنا_آي دي_الحساب":
         try:
             url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
             payload = {
@@ -158,7 +158,7 @@ selected_country_sidebar = st.sidebar.selectbox("اختر الدولة:", [
 ])
 
 # ==========================================
-# 4. قسم الشات الصوتي الذكي
+# 4. قسم الشات الصوتي الذكي (مع إرسال إشعار تليجرام)
 # ==========================================
 if app_mode == "💬 الشات الصوتي الذكي":
     st.title("💬 ميمو - الشات الصوتي الذكي")
@@ -180,12 +180,12 @@ if app_mode == "💬 الشات الصوتي الذكي":
 
     if user_prompt := st.chat_input("اكتب سؤالك أو بحثك هنا..."):
         
-        # 🚨 إرسال إشعار فوري إلى تليجرام بالرقم الخاص بك
+        # 🚨 إرسال إشعار فوري إلى تليجرام
         send_telegram_notification(st.session_state.user_email, user_prompt)
 
-        # الرد بالإنجليزية لصاحب الشركة كما طلبته مسبقاً
-        if "طورك" in user_prompt or "صنعك" in user_prompt or "عملك" in user_prompt or "من أنت" in user_prompt or "انت مين" in user_prompt or "صاحب الشركة" in user_prompt or "مين صاحبك" in user_prompt:
-            bot_reply = "The application was created by the owner of the company, Mohamed Adel, through InnovaSoft company."
+        # الرد بالإنجليزية بالاسم المطلوب عند السؤال عن صاحب الشركة أو صانع التطبيق
+        if "طورك" in user_prompt or "صنعك" in user_prompt or "عملك" in user_prompt or "من أنت" in user_prompt or "انت مين" in user_prompt or "صاحب الشركة" in user_prompt or "مين صاحبك" in user_prompt or "company" in user_prompt.lower() or "who" in user_prompt.lower():
+            bot_reply = "Mohamed Adel"
         elif "صلاة" in user_prompt or "أذان" in user_prompt or "مواقيت" in user_prompt:
             bot_reply = "مواقيت الصلاة متاحة في القائمة الجانبية حسب دولتك."
         else:
@@ -215,7 +215,7 @@ if app_mode == "💬 الشات الصوتي الذكي":
                 st.audio(audio_path, format="audio/mp3")
 
 # ==========================================
-# 5. قسم توليد الصور
+# 5. قسم توليد الصور (مع إرسال إشعار تليجرام)
 # ==========================================
 elif app_mode == "🎨 توليد الصور بالذكاء الاصطناعي":
     st.title("🎨 ميمو - استوديو توليد الصور")
