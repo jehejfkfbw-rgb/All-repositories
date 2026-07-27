@@ -30,13 +30,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# دالة تحويل النص إلى صوت محسنة بالكامل لنطق واضح جداً، نبرة رايقة، وبدون سرعة
+# دالة تحويل النص إلى صوت (سريع، واضح، وبنبرة ممتازة)
 def text_to_speech(text):
     try:
-        # تنظيف النص لضمان النطق السليم والواضح
         clean_text = text.replace("*", "").replace("#", "").replace("-", " ")
-        
-        # استخدام اللغة العربية الفصحى بوضوح تام (slow=False لنطق طبيعي ورايق)
+        # slow=False يجعل الصوت سريعاً وحيوياً
         tts = gTTS(text=clean_text, lang='ar', slow=False)
         audio_file = "memo_voice.mp3"
         tts.save(audio_file)
@@ -68,9 +66,9 @@ def get_prayer_times(country):
     return None
 
 # ==========================================
-# 2. القائمة الجانبية (Sidebar - مواقيت الصلاة والعداد التنازلي الحي)
+# 2. القائمة الجانبية (Sidebar - مواقيت الصلاة والعداد الحي وصوت التكبير)
 # ==========================================
-st.sidebar.title("🤖 ميمو AI - شركة Inovasoft")
+st.sidebar.title("🤖 ميمو AI - شركة InnovaSoft")
 st.sidebar.write("مرحباً بك في ميمو الذكي")
 st.sidebar.markdown("---")
 
@@ -119,7 +117,6 @@ if timings:
     * 🌙 **العشاء:** {isha}
     """)
     
-    # عداد تنازلي حقيقي يعمل بلغة JavaScript ليتحدث ثانية بثانية بدقة تامة
     countdown_html = f"""
     <div style="background-color: #e3f2fd; padding: 12px; border-radius: 8px; border: 1px solid #90caf9; text-align: center; direction: rtl; font-family: sans-serif;">
         <p style="margin: 0; font-size: 14px; font-weight: bold; color: #0d47a1;">⏳ العد التنازلي للصلاة القادمة:</p>
@@ -182,7 +179,7 @@ if timings:
     components.html(countdown_html, height=110)
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("🔊 **تشغيل صوت الأذان (الله أكبر):**")
+st.sidebar.markdown("🔊 **صوت التكبير والأذان:**")
 adhan_audio_url = "https://www.islamcan.com/audio/adhan/azan01.mp3"
 st.sidebar.audio(adhan_audio_url, format="audio/mp3")
 
@@ -210,9 +207,9 @@ if app_mode == "💬 الشات الصوتي الذكي":
     if user_prompt := st.chat_input("اكتب سؤالك هنا..."):
         lower_prompt = user_prompt.lower()
         
-        # الرد على المطور واسم الشركة
+        # الرد الذكي الفوري على المطور واسم الشركة
         if "طورك" in user_prompt or "صنعك" in user_prompt or "عملك" in user_prompt or "من أنت" in user_prompt or "انت مين" in user_prompt or "صاحب الشركة" in user_prompt or "مين صاحبك" in user_prompt:
-            bot_reply = "تم تطويري بواسطة المنهندس محمد عادل، من خلال شركة إنوفا سوفت InnovaSoft."
+            bot_reply = "The application was created by the owner of the company, Mohamed Adel, through InnovaSoft company."
             
         elif "صلاة" in user_prompt or "أذان" in user_prompt or "مواقيت" in user_prompt:
             found_country = 'مصر'
