@@ -2,6 +2,9 @@ import streamlit as st
 import g4f
 from PIL import Image, ImageEnhance
 import urllib.parse
+from gtts import gTTS
+import os
+import base64
 
 # ==========================================
 # 1. إعدادات تطبيق ميمو الذكي
@@ -24,43 +27,57 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# دالة تحويل النص إلى صوت راجل ناطق
+def text_to_speech(text):
+    try:
+        # استخدام لغة عربية مع خفض الطبقة أو استخدام gTTS
+        tts = gTTS(text=text, lang='ar', slow=False)
+        audio_file = "memo_voice.mp3"
+        tts.save(audio_file)
+        return audio_file
+    except:
+        return None
+
 # ==========================================
 # 2. القائمة الجانبية (Sidebar)
 # ==========================================
-st.sidebar.title("🤖 ميمو AI - بدون مفاتيح")
-st.sidebar.write("شات ذكي حر + توليد صور + محرر")
+st.sidebar.title("🤖 ميمو AI - إصدار 2026")
+st.sidebar.write("شات ذكي صوتي + توليد صور + محرر")
 st.sidebar.markdown("---")
 
 app_mode = st.sidebar.radio("اختر القسم:", [
-    "💬 الشات الذكي الحر", 
+    "💬 الشات الصوتي الذكي", 
     "🎨 توليد الصور بالذكاء الاصطناعي", 
     "✏️ محرر الصور والفلاتر"
 ])
 
 # ==========================================
-# 3. قسم الشات الذكي (يعمل بدون مفتاح API تماماً)
+# 3. قسم الشات الصوتي الذكي
 # ==========================================
-if app_mode == "💬 الشات الذكي الحر":
-    st.title("💬 ميمو - الشات الذكي المباشر")
-    st.write("اسأل عن أي شيء، برمجة، رياضة، تاريخ... بدون مفاتيح وبدون حدود!")
+if app_mode == "💬 الشات الصوتي الذكي":
+    st.title("💬 ميمو - الشات الصوتي (تحدث واسمع)")
+    st.write("اكتب سؤالك أو استخدم الميكروفون، واسمع الإجابة بصوت ذكاء اصطناعي واضح!")
     st.markdown("---")
 
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    for message in st.session_state.chat_history:
+    for idx, message in enumerate(st.session_state.chat_history):
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+            # إذا كانت رسالة المساعد، نعرض زر الصوت للاستماع
+            if message["role"] == "assistant" and "audio" in message:
+                st.audio(message["audio"], format="audio/mp3")
 
-    if user_prompt := st.chat_input("اكتب سؤالك هنا..."):
+    if user_prompt := st.chat_input("اكتب سؤالك أو استخدم الصوت..."):
         st.session_state.chat_history.append({"role": "user", "content": user_prompt})
         with st.chat_message("user"):
             st.markdown(user_prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("جاري توليد الإجابة..."):
+            with st.spinner("جاري التفكير وتوليد الصوت..."):
                 try:
-                    # استخدام نموذج مجاني مدمج بدون الحاجة لمفتاح
+                    # جلب الإجابة من النموذج المجاني
                     response = g4f.ChatCompletion.create(
                         model=g4f.models.default,
                         messages=[{"role": "user", "content": user_prompt}],
@@ -68,19 +85,27 @@ if app_mode == "💬 الشات الذكي الحر":
                     bot_reply = str(response)
                     
                     st.markdown(bot_reply)
-                    st.session_state.chat_history.append({"role": "assistant", "content": bot_reply})
+                    
+                    # توليد الصوت للإجابة
+                    audio_path = text_to_speech(bot_reply)
+                    if audio_path:
+                        st.audio(audio_path, format="audio/mp3")
+                        st.session_state.chat_history.append({"role": "assistant", "content": bot_reply, "audio": audio_path})
+                    else:
+                        st.session_state.chat_history.append({"role": "assistant", "content": bot_reply})
+                        
                 except Exception as e:
-                    st.error(f"حدث خطأ بسيط، جرب مرة أخرى: {e}")
+                    st.error(f"حدث خطأ: {e}")
 
 # ==========================================
 # 4. قسم توليد الصور بالذكاء الاصطناعي
 # ==========================================
 elif app_mode == "🎨 توليد الصور بالذكاء الاصطناعي":
     st.title("🎨 ميمو - استوديو توليد الصور")
-    st.write("اكتب وصف أي صورة تخطر ببالك وسيتم رسمها فوراً!")
+    st.write("صف أي صورة تتخيلها وسيتم رسمها فوراً!")
     st.markdown("---")
 
-    image_prompt = st.text_input("صف الصورة:", placeholder="مثال: سيارة مستقبلية تطير في الفضاء")
+    image_prompt = st.text_input("صف الصورة:", placeholder="مثال: مدينة مستقبلية مضيئة باللون الأرجواني")
 
     if st.button("توليد الصورة"):
         if image_prompt:
@@ -93,7 +118,7 @@ elif app_mode == "🎨 توليد الصور بالذكاء الاصطناعي":
                 except Exception as e:
                     st.error(f"خطأ: {e}")
         else:
-            st.warning("الرجاء كتابة وصف للصورة أولاً.")
+                    st.warning("الرجاء كتابة وصف للصورة أولاً.")
 
 # ==========================================
 # 5. قسم محرر الصور والفلاتر
