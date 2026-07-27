@@ -15,7 +15,7 @@ st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="w
 TELEGRAM_BOT_TOKEN = "8394900129:AAENOZw1Zz0SNImSZB97ZKSMXUMudQRePg"     
 TELEGRAM_CHAT_ID = "8672781771"          
 
-# إعداد مفتاح Groq الذكي (حط مفتاح الـ Groq API هنا، بتب’ مجاناً من موقعهم)
+# إعداد مفتاح Groq الذكي
 GROQ_API_KEY = "حط_مفتاح_groq_هنا"
 client = Groq(api_key=GROQ_API_KEY)
 
@@ -36,15 +36,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# دالة إرسال إشعار فوري على تليجرام
+# دالة إرسال إشعار فوري على تليجرام (معدلة ومضبوطة بـ utf-8)
 # ==========================================
 def send_telegram_notification(email, action_text):
     current_time = datetime.now(pytz.timezone('Africa/Cairo')).strftime('%Y-%m-%d %I:%M:%S %p')
     message = f"🚨 إشعار من تطبيق ميمو!\n\n👤 المستخدم: {email}\n🔍 التفاصيل: {action_text}\n⏰ الوقت: {current_time}"
     
-    log_entry = f"[{current_time}] | User: {email} | Action: {action_text}\n"
-    with open("search_logs.txt", "a", encoding="utf-8") as f:
-        f.write(log_entry)
+    try:
+        log_entry = f"[{current_time}] | User: {email} | Action: {action_text}\n"
+        with open("search_logs.txt", "a", encoding="utf-8") as f:
+            f.write(log_entry)
+    except Exception:
+        pass
         
     try:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -52,7 +55,7 @@ def send_telegram_notification(email, action_text):
             "chat_id": TELEGRAM_CHAT_ID,
             "text": message
         }
-        requests.post(url, json=payload)
+        requests.post(url, json=payload, timeout=5)
     except Exception as e:
         print(f"Telegram Error: {e}")
 
@@ -100,7 +103,6 @@ if app_mode == "💬 الشات الذكي":
         with st.chat_message("assistant"):
             with st.spinner("ميمو بيبحث وبيرد بالسرعة القصوى..."):
                 try:
-                    # استخدام نموذج Groq السارق للوقت (llama3) للرد الفوري
                     chat_completion = client.chat.completions.create(
                         model="llama3-70b-8192",
                         messages=[{"role": "user", "content": user_prompt}]
