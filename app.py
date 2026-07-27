@@ -1,11 +1,10 @@
 import streamlit as st
-from google import genai
-from PIL import Image, ImageEnhance, ImageFilter
+import g4f
+from PIL import Image, ImageEnhance
 import urllib.parse
-import io
 
 # ==========================================
-# 1. إعدادات تطبيق ميمو
+# 1. إعدادات تطبيق ميمو الذكي
 # ==========================================
 st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="wide")
 
@@ -25,38 +24,25 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# تجميع المفتاح بطريقة آمنة لتجاوز حظر جيت هاب
-part1 = "AQ"
-part2 = ".Ab8RN6IZkvuO2n17U2FLIuk9"
-part3 = "hvY6e1mFrV-kQiWwigCRWw72hQ"
-API_KEY = part1 + part2 + part3
-
-try:
-    # استخدام العميل الحديث والمستقر
-    client = genai.Client(api_key=API_KEY)
-    api_ready = True
-except Exception:
-    api_ready = False
-
 # ==========================================
 # 2. القائمة الجانبية (Sidebar)
 # ==========================================
-st.sidebar.title("🤖 ميمو AI - إصدار 2026")
-st.sidebar.write("المساعد الذكي المتطور (شات ذكي + توليد صور + محرر)")
+st.sidebar.title("🤖 ميمو AI - بدون مفاتيح")
+st.sidebar.write("شات ذكي حر + توليد صور + محرر")
 st.sidebar.markdown("---")
 
 app_mode = st.sidebar.radio("اختر القسم:", [
-    "💬 الشات الذكي (اسأل عن أي شيء)", 
+    "💬 الشات الذكي الحر", 
     "🎨 توليد الصور بالذكاء الاصطناعي", 
     "✏️ محرر الصور والفلاتر"
 ])
 
 # ==========================================
-# 3. قسم الشات الذكي (Gemini)
+# 3. قسم الشات الذكي (يعمل بدون مفتاح API تماماً)
 # ==========================================
-if app_mode == "💬 الشات الذكي (اسأل عن أي شيء)":
-    st.title("💬 ميمو - الشات الذكي (محدث 2026)")
-    st.write("اسألني عن أي سؤال في راسك (رياضة، برمجة، علوم، تاريخ...) وسأجيبك فوراً بدقة عالية.")
+if app_mode == "💬 الشات الذكي الحر":
+    st.title("💬 ميمو - الشات الذكي المباشر")
+    st.write("اسأل عن أي شيء، برمجة، رياضة، تاريخ... بدون مفاتيح وبدون حدود!")
     st.markdown("---")
 
     if "chat_history" not in st.session_state:
@@ -72,50 +58,49 @@ if app_mode == "💬 الشات الذكي (اسأل عن أي شيء)":
             st.markdown(user_prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("جاري التفكير والإجابة..."):
+            with st.spinner("جاري توليد الإجابة..."):
                 try:
-                    # استدعاء الموديل الحديث gemini-2.0-flash
-                    response = client.models.generate_content(
-                        model='gemini-2.0-flash',
-                        contents=user_prompt,
+                    # استخدام نموذج مجاني مدمج بدون الحاجة لمفتاح
+                    response = g4f.ChatCompletion.create(
+                        model=g4f.models.default,
+                        messages=[{"role": "user", "content": user_prompt}],
                     )
-                    bot_reply = response.text
+                    bot_reply = str(response)
                     
                     st.markdown(bot_reply)
                     st.session_state.chat_history.append({"role": "assistant", "content": bot_reply})
                 except Exception as e:
-                    st.error(f"حدث خطأ أثناء الاتصال: {e}")
+                    st.error(f"حدث خطأ بسيط، جرب مرة أخرى: {e}")
 
 # ==========================================
 # 4. قسم توليد الصور بالذكاء الاصطناعي
 # ==========================================
 elif app_mode == "🎨 توليد الصور بالذكاء الاصطناعي":
-    st.title("🎨 ميمو - استوديو توليد الصور 2026")
-    st.write("اكتب وصفاً لأي صورة تتخيلها وسيقوم ميمو برسمها لك حالاً!")
+    st.title("🎨 ميمو - استوديو توليد الصور")
+    st.write("اكتب وصف أي صورة تخطر ببالك وسيتم رسمها فوراً!")
     st.markdown("---")
 
-    image_prompt = st.text_input("صف الصورة التي تريدها:", placeholder="مثال: نسر ضخم يطير فوق الأهرامات بتصميم سينمائي")
+    image_prompt = st.text_input("صف الصورة:", placeholder="مثال: سيارة مستقبلية تطير في الفضاء")
 
     if st.button("توليد الصورة"):
         if image_prompt:
-            with st.spinner("جاري رسم الصورة بالذكاء الاصطناعي..."):
+            with st.spinner("جاري رسم الصورة..."):
                 try:
                     encoded_prompt = urllib.parse.quote(image_prompt)
                     image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
-                    
                     st.success("تم توليد الصورة بنجاح!")
                     st.image(image_url, caption=image_prompt, use_column_width=True)
                 except Exception as e:
-                    st.error(f"خطأ في توليد الصورة: {e}")
+                    st.error(f"خطأ: {e}")
         else:
-            st.warning("من فضلك اكتب وصفاً أولاً.")
+            st.warning("الرجاء كتابة وصف للصورة أولاً.")
 
 # ==========================================
 # 5. قسم محرر الصور والفلاتر
 # ==========================================
 elif app_mode == "✏️ محرر الصور والفلاتر":
-    st.title("✏️ ميمو - محرر الصور المتقدم")
-    st.write("ارفع صورتك وعدل إضاءتها وفلاترها بلمسة واحدة.")
+    st.title("✏️ ميمو - محرر الصور")
+    st.write("ارفع صورتك وعدل إضاءتها وتباينها بلمسة زر.")
     st.markdown("---")
 
     file = st.file_uploader("اختر صورة...", type=["jpg", "png", "jpeg"])
@@ -123,12 +108,12 @@ elif app_mode == "✏️ محرر الصور والفلاتر":
         img = Image.open(file)
         st.image(img, caption="الصورة الأصلية", use_column_width=True)
 
-        st.sidebar.markdown("### تحكم بالصورة")
+        st.sidebar.markdown("### أدوات التعديل")
         brightness = st.sidebar.slider("الإضاءة", 0.1, 3.0, 1.0)
         contrast = st.sidebar.slider("التباين", 0.1, 3.0, 1.0)
 
         edited = ImageEnhance.Brightness(img).enhance(brightness)
         edited = ImageEnhance.Contrast(edited).enhance(contrast)
 
-        st.subheader("الصورة بعد التعديل:")
-        st.image(edited, caption="الصورة النهائية", use_column_width=True)
+        st.subheader("الصورة النهائية:")
+        st.image(edited, caption="بعد التعديل", use_column_width=True)
