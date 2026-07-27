@@ -2,6 +2,7 @@ import streamlit as st
 import g4f
 from PIL import Image, ImageEnhance
 import urllib.parse
+from gtts import gTTS
 import os
 from datetime import datetime
 import pytz
@@ -29,22 +30,16 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# دالة توليد صوت ذكي وسريع باستخدام جافاسكريبت المتصفح (صوت ناعم، سريع، وواضح جداً)
-def speak_text_js(text):
-    clean_text = text.replace('"', '').replace("'", "").replace("\n", " ")
-    js_code = f"""
-    <script>
-    if ('speechSynthesis' in window) {{
-        window.speechSynthesis.cancel(); // إيقاف أي صوت قديم
-        var utterance = new SpeechSynthesisUtterance("{clean_text}");
-        utterance.lang = 'ar-SA'; // لغة عربية بنبرة ممتازة
-        utterance.rate = 1.2; // سرعة عالية وحيوية
-        utterance.pitch = 1.0;
-        window.speechSynthesis.speak(utterance);
-    }}
-    </script>
-    """
-    components.html(js_code, height=0)
+# دالة تحويل النص إلى صوت (سريع، نقي، وواضح جداً)
+def text_to_speech(text, filename="memo_voice.mp3"):
+    try:
+        clean_text = text.replace("*", "").replace("#", "").replace("-", " ")
+        tts = gTTS(text=clean_text, lang='ar', slow=False)
+        tts.save(filename)
+        return filename
+    except Exception as e:
+        print(f"Error in TTS: {e}")
+        return None
 
 # دالة جلب مواقيت الصلاة من API
 def get_prayer_times(country):
@@ -69,7 +64,7 @@ def get_prayer_times(country):
     return None
 
 # ==========================================
-# 2. القائمة الجانبية (Sidebar - مواقيت الصلاة، العداد، وصوت التكبيرات المباشر)
+# 2. القائمة الجانبية (Sidebar - مواقيت الصلاة، العداد، وصوت التكبير والأذان)
 # ==========================================
 st.sidebar.title("🤖 ميمو AI - شركة InnovaSoft")
 st.sidebar.write("مرحباً بك في ميمو الذكي")
@@ -183,7 +178,6 @@ if timings:
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("🔊 **صوت التكبيرات والأذان:**")
-# رابط مباشر لصوت التكبيرات والأذان النقي
 takbeerat_audio_url = "https://www.islamcan.com/audio/adhan/azan01.mp3"
 st.sidebar.audio(takbeerat_audio_url, format="audio/mp3")
 
@@ -192,7 +186,7 @@ st.sidebar.audio(takbeerat_audio_url, format="audio/mp3")
 # ==========================================
 if app_mode == "💬 الشات الصوتي الذكي":
     st.title("🤖 مرحباً بك في ميمو الذكي")
-    st.write("اسأل عن مواقيت الصلاة، الوقت، أو اسألني من طورني وسأجيبك بسرعة فائقة وصوت ناطق!")
+    st.write("اسأل عن مواقيت الصلاة، الوقت، أو اسألني من طورني، واضغط على مشغل الصوت تحت كل رسالة لسماع الرد فوراً!")
     st.markdown("---")
 
     if "chat_history" not in st.session_state:
@@ -202,15 +196,18 @@ if app_mode == "💬 الشات الصوتي الذكي":
         st.session_state.chat_history = []
         st.rerun()
 
-    for message in st.session_state.chat_history:
+    # عرض المحادثات القديمة مع حفظ الصوت الخاص بكل رسالة
+    for idx, message in enumerate(st.session_state.chat_history):
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+            if message["role"] == "assistant" and "audio" in message:
+                st.audio(message["audio"], format="audio/mp3")
 
     if user_prompt := st.chat_input("اكتب سؤالك هنا..."):
         
-        # الرد الذكي الفوري على المطور واسم الشركة
+        # الرد الذكي الفوري
         if "طورك" in user_prompt or "صنعك" in user_prompt or "عملك" in user_prompt or "من أنت" in user_prompt or "انت مين" in user_prompt or "صاحب الشركة" in user_prompt or "مين صاحبك" in user_prompt:
-            bot_reply = "تم تطويري بواسطة صاحب الشركة المهندس محمد عادل، من خلال شركة إنوفا سوفت InnovaSoft."
+            bot_reply = "The application was created by the owner of the company, Mohamed Adel, through InnovaSoft company."
             
         elif "صلاة" in user_prompt or "أذان" in user_prompt or "مواقيت" in user_prompt:
             found_country = 'مصر'
@@ -225,7 +222,7 @@ if app_mode == "💬 الشات الصوتي الذكي":
                 bot_reply = "عذراً، لم أستطع جلب مواقيت الصلاة الآن."
                 
         else:
-            with st.spinner("جاري التفكير..."):
+            with st.spinner("جاري التفكير وتوليد الصوت..."):
                 try:
                     messages_list = [{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_history]
                     messages_list.append({"role": "user", "content": user_prompt})
@@ -238,16 +235,25 @@ if app_mode == "💬 الشات الصوتي الذكي":
                 except Exception as e:
                     bot_reply = f"عذراً حدث خطأ بسيط: {e}"
 
+        # حفظ الرسائل وتوليد ملف صوتي خاص بكل رد جديد لتجنب تداخله مع ردود أخرى
+        audio_filename = f"memo_voice_{len(st.session_state.chat_history)}.mp3"
+        audio_path = text_to_speech(bot_reply, filename=audio_filename)
+
         st.session_state.chat_history.append({"role": "user", "content": user_prompt})
-        st.session_state.chat_history.append({"role": "assistant", "content": bot_reply})
+        
+        assistant_message = {"role": "assistant", "content": bot_reply}
+        if audio_path:
+            assistant_message["audio"] = audio_path
+            
+        st.session_state.chat_history.append(assistant_message)
 
         with st.chat_message("user"):
             st.markdown(user_prompt)
 
         with st.chat_message("assistant"):
             st.markdown(bot_reply)
-            # تشغيل الصوت تلقائياً وبسرعة فائقة من المتصفح
-            speak_text_js(bot_reply)
+            if audio_path:
+                st.audio(audio_path, format="audio/mp3")
 
 # ==========================================
 # 4. قسم توليد الصور بالذكاء الاصطناعي
