@@ -75,7 +75,6 @@ def send_welcome_and_code_email(receiver_email, code):
         msg['To'] = receiver_email
         msg['Subject'] = "مرحباً بك في تطبيق ميمو - رمز التحقق"
         
-        # رسالة ترحيب مدمجة مع الأربع أرقام فقط
         body = f"أهلاً بك في تطبيق ميمو الذكي! نحن سعداء بانضمامك إلينا.\n\nرمز التحقق الخاص بك هو:\n{code}"
         msg.attach(MIMEText(body, 'plain', 'utf-8'))
         
@@ -124,7 +123,6 @@ if not st.session_state.logged_in:
             </div>
         """, unsafe_allow_html=True)
         
-        # الخطوة الأولى: اختيار طريقة تسجيل الدخول (جوجل أو فيسبوك)
         if st.session_state.step == "choose_method":
             st.markdown("### اختر طريقة تسجيل الدخول:")
             
@@ -138,11 +136,9 @@ if not st.session_state.logged_in:
                 st.session_state.step = "email_input"
                 st.rerun()
 
-        # الخطوة الثانية: إدخال البريد الإلكتروني وكلمة المرور
         elif st.session_state.step == "email_input":
-            st.info(تم اختيار الطريقة: **{st.session_state.auth_method}**)
+            st.info(f"تم اختيار الطريقة: **{st.session_state.auth_method}**")
             
-            # عرض اسم المستخدم والإيميل الافتراضي بناءً على طلبك
             default_email = "ajakdjrjej@gmail.com" if st.session_state.auth_method == "Google" else ""
             
             user_input_email = st.text_input("يرجى إدخال البريد الإلكتروني (Gmail):", value=default_email, placeholder="example@gmail.com")
@@ -160,7 +156,6 @@ if not st.session_state.logged_in:
                         st.session_state.verification_code = code
                         st.session_state.pending_email = user_input_email
                         
-                        # إرسال رسالة الترحيب والرمز للإيميل
                         sent_success = send_welcome_and_code_email(user_input_email, code)
                         
                         if sent_success:
@@ -172,7 +167,6 @@ if not st.session_state.logged_in:
                     else:
                         st.error("الرجاء إدخال بريد جوجل صحيح وكلمة مرور لا تقل عن 6 أحرف.")
 
-        # الخطوة الثالثة: إدخال الرمز المكون من 4 أرقام
         elif st.session_state.step == "verify":
             st.info(f"تم إرسال الرمز المكون من 4 أرقام إلى بريدك: **{st.session_state.pending_email}**")
             
@@ -183,11 +177,9 @@ if not st.session_state.logged_in:
                     st.session_state.logged_in = True
                     st.session_state.user_email = st.session_state.pending_email
                     
-                    # حفظ الجلسة للأبد على الجهاز
                     with open(SESSION_FILE, "w", encoding="utf-8") as f:
                         f.write(st.session_state.user_email)
                     
-                    # إرسال إشعار تليجرام فوري
                     send_telegram_notification(st.session_state.user_email, f"تسجيل دخول ناجح عبر {st.session_state.auth_method} بالبريد: {st.session_state.user_email}")
                     
                     st.success("تم تسجيل الدخول بنجاح ولن يطلب منك مرة أخرى عند فتح التطبيق!")
