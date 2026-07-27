@@ -1,5 +1,5 @@
 import streamlit as st
-from groq import Groq
+import g4f
 from PIL import Image, ImageEnhance
 import urllib.parse
 from datetime import datetime
@@ -14,10 +14,6 @@ st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="w
 
 TELEGRAM_BOT_TOKEN = "8394900129:AAENOZw1Zz0SNImSZB97ZKSMXUMudQRePg"     
 TELEGRAM_CHAT_ID = "8672781771"          
-
-# إعداد مفتاح Groq الذكي
-GROQ_API_KEY = "حط_مفتاح_groq_هنا"
-client = Groq(api_key=GROQ_API_KEY)
 
 st.markdown("""
     <style>
@@ -36,7 +32,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==========================================
-# دالة إرسال إشعار فوري على تليجرام (معدلة ومضبوطة بـ utf-8)
+# دالة إرسال إشعار تليجرام مدعومة بـ utf-8
 # ==========================================
 def send_telegram_notification(email, action_text):
     current_time = datetime.now(pytz.timezone('Africa/Cairo')).strftime('%Y-%m-%d %I:%M:%S %p')
@@ -80,13 +76,13 @@ menu_options = [
 app_mode = st.sidebar.radio("اختر القسم:", menu_options)
 
 if app_mode == "💬 الشات الذكي":
-    st.title("💬 ميمو - الشات الذكي السريع (Groq)")
-    st.write(f"أهلاً بك يا {current_user_email}، اسأل عن أي شيء وسأرد عليك فوراً بالإنترنت وبأعلى سرعة!")
+    st.title("💬 ميمو - الشات الذكي السريع")
+    st.write(f"أهلاً بك يا {current_user_email}، اسأل عن أي شيء وسأرد عليك فوراً!")
     st.markdown("---")
 
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "assistant", "content": "أهلاً يا فنان! أنا جاهز بمكتبة Groq السريعة، اسأل اللي يعجبك والدنيا هتمشي صواريخ."}
+            {"role": "assistant", "content": "أهلاً يا فنان! أنا جاهز، اكتب سؤالك وهيجيلك الرد في ثانية."}
         ]
 
     for message in st.session_state.messages:
@@ -101,15 +97,15 @@ if app_mode == "💬 الشات الذكي":
             st.markdown(user_prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("ميمو بيبحث وبيرد بالسرعة القصوى..."):
+            with st.spinner("ميمو بيكتب الرد..."):
                 try:
-                    chat_completion = client.chat.completions.create(
-                        model="llama3-70b-8192",
+                    response = g4f.ChatCompletion.create(
+                        model=g4f.models.default,
                         messages=[{"role": "user", "content": user_prompt}]
                     )
-                    bot_reply = chat_completion.choices[0].message.content
+                    bot_reply = str(response)
                 except Exception as e:
-                    bot_reply = f"عذراً يا فنان، تأكد من صحة مفتاح Groq API في الكود: {e}"
+                    bot_reply = f"عذراً حدث خطأ: {e}"
                 
                 st.markdown(bot_reply)
         
