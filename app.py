@@ -1,4 +1,7 @@
 import streamlit as st
+import datetime
+import requests
+from datetime import datetime as dt
 
 # 1. إعدادات الصفحة
 st.set_page_config(
@@ -7,142 +10,192 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. تهيئة سجل البحث في الـ Session State
+# 2. تهيئة سجل البحث في Session State
 if "search_history" not in st.session_state:
     st.session_state.search_history = []
 
-# --- تنسيق الواجهة لتكون القائمة الجانبية على اليمين ودعم اللغة العربية ---
+# --- تنسيق الواجهة ودعم اتجاه النص ---
 st.markdown("""
     <style>
     .stApp {
         direction: rtl;
         text-align: right;
     }
-    [data-testid="stSidebar"] {
-        right: 0;
-        left: auto;
+    .prayer-card {
+        background-color: #1e2130;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #313549;
+        margin-bottom: 10px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# ---------------- القائمة الجانبية (على اليمين) ----------------
-with st.sidebar:
-    st.header("🔍 البحث والسجل")
+# دالة لجلب مواقيت الصلاة من API
+@st.cache_data(ttl=3600)
+def get_prayer_times():
+    try:
+        url = "https://api.aladhan.com/v1/timingsByCity?city=Cairo&country=Egypt&method=5"
+        res = requests.get(url).json()
+        return res["data"]["timings"]
+    except:
+        return {
+            "Fajr": "04:30",
+            "Dhuhr": "12:00",
+            "Asr": "15:30",
+            "Maghrib": "18:45",
+            "Isha": "20:15"
+        }
+
+prayer_times = get_prayer_times()
+
+# ---------------- تقسيم الواجهة إلى عمودين (يمين وشمال) ----------------
+col_main, col_left = st.columns([2.5, 1.2])
+
+# ==========================================
+# العمود الأيسر (أعلى الشمال: الأذان والمواقيت + أسفله: سجل البحث)
+# ==========================================
+with col_left:
+    # 🕋 قسم مواقيت الصلاة والأذان
+    st.markdown("### 🕌 مواقيت الصلاة والأذان")
     
-    # مربع ادخال البحث
-    search_query = st.text_input("ابحث عن خدمة أو كلمة:")
-    
-    if st.button("بحث"):
-        if search_query.strip() != "":
-            st.session_state.search_history.insert(0, search_query.strip())
-            st.success(f"تم البحث عن: {search_query}")
+    with st.container():
+        now = dt.now().strftime("%H:%M")
+        
+        # عرض مواقيت الصلاة
+        st.markdown(f"""
+        <div class="prayer-card">
+            <b>⏱️ الوقت الحالي:</b> {now}<br><hr style='margin:8px 0;'>
+            <b>🌅 الفجر:</b> {prayer_times.get('Fajr')}<br>
+            <b>☀️ الظهر:</b> {prayer_times.get('Dhuhr')}<br>
+            <b>🌤️ العصر:</b> {prayer_times.get('Asr')}<br>
+            <b>🌆 المغرب:</b> {prayer_times.get('Maghrib')}<br>
+            <b>🌌 العشاء:</b> {prayer_times.get('Isha')}
+        </div>
+        """, unsafe_allow_html=True)
+
+        # التحقق من ميعاد الأذان وتشغيل الصوت عند المطابقة
+        current_time_short = dt.now().strftime("%H:%M")
+        prayers_list = {
+            "الفجر": prayer_times.get('Fajr'),
+            "الظهر": prayer_times.get('Dhuhr'),
+            "العصر": prayer_times.get('Asr'),
+            "المغرب": prayer_times.get('Maghrib'),
+            "العشاء": prayer_times.get('Isha')
+        }
+
+        azan_triggered = False
+        for name, p_time in prayers_list.items():
+            if current_time_short == p_time:
+                st.success(f"🔔 حان الآن موعد أذان صلاة {name}!")
+                # صوت الأذان (الله أكبر)
+                st.audio("https://www.islamcan.com/audio/adhan/azan1.mp3", autoplay=True)
+                azan_triggered = True
+                break
+        
+        if not azan_triggered:
+            st.info("⌛ الأذان يعمل تلقائياً فور دخول وقت الصلاة.")
 
     st.write("---")
-    st.subheader("📜 سجل البحث:")
+
+    # 📜 قسم سجل البحث (تحت قسم الأذان مباشرة في الشمال)
+    st.subheader("📜 سجل البحث")
     
     if st.session_state.search_history:
-        for item in st.session_state.search_history:
-            st.markdown(f"• **{item}**")
+        for idx, item in enumerate(st.session_state.search_history):
+            st.markdown(f"{idx+1}. **{item}**")
             
         if st.button("تفريغ السجل 🗑️"):
             st.session_state.search_history = []
             st.rerun()
     else:
-        st.write("لا يوجد بحث سابق حتى الآن.")
+        st.caption("لا يوجد بحث سابق حتى الآن.")
 
-# ---------------- محتوى الصفحة الرئيسي ----------------
-st.title("🤖 مرحباً بك! أنا الذكاء الاصطناعي ميمو (Memo)")
-st.subheader("مساعدك الذكي ودليلك لأفضل أدوات الذكاء الاصطناعي")
 
-st.markdown("""
-أهلاً بك في موقعنا! أنا **ميمو**، المساعد الذكي الخاص بالموقع. يمكنك استخدام الخانة بالأسفل لسؤالي عن أي شيء أو الاستفسار عن المطور، أو تصفح أفضل خدمات الذكاء الاصطناعي المجمعة لك بالأسفل.
-""")
-
-st.write("---")
-
-# ---------------- قسم اسأل ميمو ----------------
-st.subheader("💬 اسأل ميمو")
-user_question = st.text_input("اكتب سؤالك هنا (مثال: مين صاحبك؟ / Who created you?):")
-
-if user_question:
-    q_lower = user_question.lower()
-    # الكلمات المفتاحية للتعرف على السؤال عن صاحب التطبيق أو الشركة
-    owner_keywords = [
-        "مين صاحبك", "من صاحبك", "مين صاحب الشركة", "صاحب الشركة", 
-        "مين عاملك", "من عملك", "مين المطور", "من المطور", "صاحبك", "مين المالك",
-        "who created", "who made", "who is the owner", "creator", "developer", "owner"
-    ]
+# ==========================================
+# العمود الأيمن (المحتوى الرئيسي ووحدة الكتابة والأسئلة)
+# ==========================================
+with col_main:
+    st.title("🤖 تطبيق ميمو للذكاء الاصطناعي")
+    st.write("مساعدك الذكي للتصفح والاستفسار والأدوات البرمجية.")
     
-    if any(keyword in q_lower for keyword in owner_keywords):
-        st.success("🤖 **Memo:** This application was created and developed by Mohamed Adel Mohamed Ali.")
-    else:
-        st.info("🤖 **Memo:** أهلاً بك! أنا ميمو، يمكنك سؤالي عن مطور التطبيق أو البحث عن الأدوات بالأسفل.")
+    # 🔍 مربع البحث الرئيسي
+    st.subheader("🔎 مربع البحث")
+    search_query = st.text_input("ابحث عن خدمة أو كلمة داخل التطبيق:", key="main_search")
+    if st.button("بحث 🔍"):
+        if search_query.strip() != "":
+            st.session_state.search_history.insert(0, search_query.strip())
+            st.success(f"تمت إضافة '{search_query}' إلى السجل!")
+            st.rerun()
 
-st.write("---")
+    st.write("---")
 
-# نتائج البحث
-if search_query:
-    st.info(f"🔎 نتائج البحث عن: **{search_query}**")
+    # 💬 جهة الكتابة واسأل ميمو
+    st.subheader("✍️ جهة الكتابة واسأل ميمو")
+    user_question = st.text_input("اكتب سؤالك هنا (مثال: مين صاحبك؟ / Who created you?):", key="ask_memo")
 
-# تبويبات الخدمات باللغة العربية
-tab1, tab2, tab3, tab4 = st.tabs([
-    "📝 أدوات النصوص والمحاثة", 
-    "🎨 إنشاء الصور والفنون", 
-    "💻 البرمجة والتطوير", 
-    "🎙️ الصوت والموسيقى"
-])
+    if user_question:
+        q_lower = user_question.lower()
+        owner_keywords = [
+            "مين صاحبك", "من صاحبك", "مين صاحب الشركة", "صاحب الشركة", 
+            "مين عاملك", "من عملك", "مين المطور", "من المطور", "صاحبك", "مين المالك",
+            "who created", "who made", "who is the owner", "creator", "developer", "owner"
+        ]
+        
+        if any(keyword in q_lower for keyword in owner_keywords):
+            st.success("🤖 **Memo:** This application was created and developed by Mohamed Adel Mohamed Ali.")
+        else:
+            st.info("🤖 **Memo:** أهلاً بك! أنا ميمو، يمكنك سؤالي عن مطور التطبيق أو البحث عن الأدوات بالأسفل.")
 
-with tab1:
-    st.header("توليد النصوص والمساعدات الذكية")
-    st.write("أفضل أدوات الذكاء الاصطناعي للكتابة، البحث، وتوليد الأفكار.")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("شات جي بي تي (ChatGPT)")
-        st.markdown("الأداة الأشهر عالمياً للمحادثة، كتابة المقالات، وتلخيص النصوص.")
-        st.link_button("زيارة ChatGPT", "https://chatgpt.com")
-    with col2:
-        st.subheader("جوجل جيميناي (Gemini)")
-        st.markdown("ذكاء جوجل المتطور المرتبط بالبحث المباشر ومعالجة البيانات.")
-        st.link_button("زيارة Gemini", "https://gemini.google.com")
+    st.write("---")
 
-with tab2:
-    st.header("إنشاء الصور وتوليد الفنون")
-    st.write("حول أفكارك وتخيلاتك إلى صور وفنون فائقة الدقة.")
-    col3, col4 = st.columns(2)
-    with col3:
-        st.subheader("ميدجيرني (Midjourney)")
-        st.markdown("أفضل أداة لتوليد صور سينمائية وفنية عالية الجودة.")
-        st.link_button("زيارة Midjourney", "https://www.midjourney.com")
-    with col4:
-        st.subheader("دالي 3 (DALL-E 3)")
-        st.markdown("نموذج شركة OpenAI الذكي لفهم الوصف الدقيق وإنشاء الصور.")
-        st.link_button("زيارة DALL-E 3", "https://openai.com/dall-e-3")
+    # 📑 تبويبات الخدمات
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📝 أدوات النصوص", 
+        "🎨 إنشاء الصور", 
+        "💻 البرمجة والتطوير", 
+        "🎙️ الصوت والموسيقى"
+    ])
 
-with tab3:
-    st.header("البرمجة وتطوير البرمجيات")
-    st.write("أدوات مساعدة للمبرمجين لكتابة الكود وتصحيح الأخطاء بسرعة.")
-    col5, col6 = st.columns(2)
-    with col5:
-        st.subheader("جيت هاب كوبايلوت (GitHub Copilot)")
-        st.markdown("مساعد المبرمجين الذكي الذي يكمل الأكواد داخل محرر الأكواد.")
-        st.link_button("زيارة GitHub Copilot", "https://github.com/features/copilot")
-    with col6:
-        st.subheader("كلود (Claude)")
-        st.markdown("نموذج متقدم يمتاز بدقة عالية في فهم البرمجيات المنطقية والأكواد الطويلة.")
-        st.link_button("زيارة Claude", "https://claude.ai")
+    with tab1:
+        st.markdown("#### أفضل أدوات الذكاء الاصطناعي للكتابة والمحادثة")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("**ChatGPT**")
+            st.link_button("زيارة ChatGPT", "https://chatgpt.com")
+        with col2:
+            st.markdown("**Google Gemini**")
+            st.link_button("زيارة Gemini", "https://gemini.google.com")
 
-with tab4:
-    st.header("توليد الصوت والموسيقى")
-    st.write("تحويل النصوص إلى أصوات بشرية واضحة وإنشاء مقاطع موسيقية.")
-    col7, col8 = st.columns(2)
-    with col7:
-        st.subheader("إليفين لابس (ElevenLabs)")
-        st.markdown("أفضل أداة لتوليد التعليق الصوتي والتعرف على الأصوات بدقة متناهية.")
-        st.link_button("زيارة ElevenLabs", "https://elevenlabs.io")
-    with col8:
-        st.subheader("سونو (Suno AI)")
-        st.markdown("إنشاء أغاني كاملة مع الموسيقى والكلمات والألحان من الوصف النصي.")
-        st.link_button("زيارة Suno", "https://suno.com")
+    with tab2:
+        st.markdown("#### أدوات توليد الصور والتصاميم")
+        col3, col4 = st.columns(2)
+        with col3:
+            st.markdown("**Midjourney**")
+            st.link_button("زيارة Midjourney", "https://www.midjourney.com")
+        with col4:
+            st.markdown("**DALL-E 3**")
+            st.link_button("زيارة DALL-E 3", "https://openai.com/dall-e-3")
 
-st.write("---")
-st.caption("🤖 تطبيق ميمو الذكي © 2026 - تم التطوير بواسطة محمد عادل محمد علي")
+    with tab3:
+        st.markdown("#### أدوات البرمجة وتطوير المواقع")
+        col5, col6 = st.columns(2)
+        with col5:
+            st.markdown("**GitHub Copilot**")
+            st.link_button("زيارة Copilot", "https://github.com/features/copilot")
+        with col6:
+            st.markdown("**Claude AI**")
+            st.link_button("زيارة Claude", "https://claude.ai")
+
+    with tab4:
+        st.markdown("#### أدوات توليد الصوت والأغاني")
+        col7, col8 = st.columns(2)
+        with col7:
+            st.markdown("**ElevenLabs**")
+            st.link_button("زيارة ElevenLabs", "https://elevenlabs.io")
+        with col8:
+            st.markdown("**Suno AI**")
+            st.link_button("زيارة Suno", "https://suno.com")
+
+    st.write("---")
+    st.caption("🤖 تطبيق ميمو الذكي © 2026 - تم التطوير بواسطة محمد عادل محمد علي")
