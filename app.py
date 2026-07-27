@@ -4,6 +4,8 @@ from PIL import Image, ImageEnhance
 import urllib.parse
 from gtts import gTTS
 import os
+from datetime import datetime
+import pytz
 
 # ==========================================
 # 1. إعدادات تطبيق ميمو الذكي
@@ -54,7 +56,7 @@ app_mode = st.sidebar.radio("اختر القسم:", [
 # ==========================================
 if app_mode == "💬 الشات الصوتي الذكي":
     st.title("💬 ميمو - الشات الصوتي")
-    st.write("اسأل عن أي شيء، أو اسألني عن اسمي وصاحب الشركة، واسمع الإجابة بصوت واضح!")
+    st.write("اسأل عن الوقت في أي دولة عربية أو أمريكا، أو اسألني عن اسمي وصاحب الشركة!")
     st.markdown("---")
 
     if "chat_history" not in st.session_state:
@@ -67,12 +69,67 @@ if app_mode == "💬 الشات الصوتي الذكي":
                 st.audio(message["audio"], format="audio/mp3")
 
     if user_prompt := st.chat_input("اكتب سؤالك هنا..."):
-        # التحقق من الأسئلة الخاصة بالهوية وصاحب الشركة مع اسم محمد واللقب
         lower_prompt = user_prompt.lower()
-        if "صاحب الشركة" in user_prompt or "مين صاحبك" in user_prompt or "مؤسس" in user_prompt or "صاحب شركه" in user_prompt:
+        
+        # الرد على الوقت والساعة حسب الدول المطلوبة
+        if "الساعة" in user_prompt or "الوقت" in user_prompt or "كام الساعه" in lower_prompt or "كام الساعة" in lower_prompt:
+            # خريطة توقيت الدول العربية وأمريكا
+            timezones = {
+                'مصر': 'Africa/Cairo',
+                'السعودية': 'Asia/Riyadh',
+                'الامارات': 'Asia/Dubai',
+                'الإمارات': 'Asia/Dubai',
+                'الكويت': 'Asia/Kuwait',
+                'قطر': 'Asia/Qatar',
+                'البحرين': 'Asia/Bahrain',
+                'عمان': 'Asia/Muscat',
+                'الأردن': 'Asia/Amman',
+                'فلسطين': 'Asia/Gaza',
+                'لبنان': 'Asia/Beirut',
+                'سوريا': 'Asia/Damascus',
+                'العراق': 'Asia/Baghdad',
+                'اليمن': 'Asia/Aden',
+                'السودان': 'Africa/Khartoum',
+                'ليبيا': 'Africa/Tripoli',
+                'تونس': 'Africa/Tunis',
+                'الجزائر': 'Africa/Algiers',
+                'المغرب': 'Africa/Casablanca',
+                'موريتانيا': 'Africa/Nouakchott',
+                'الصومال': 'Africa/Mogadishu',
+                'جيبوتي': 'Africa/Djibouti',
+                'جزر القمر': 'Africa/Indian/Comoro',
+                'امريكا': 'America/New_York',
+                'أمريكا': 'America/New_York',
+                'الولايات المتحدة': 'America/New_York'
+            }
+            
+            # معرفة الدولة المطلوبة من نص المستخدم
+            found_country = None
+            for country, tz_name in timezones.items():
+                if country in user_prompt:
+                    found_country = country
+                    target_tz = pytz.timezone(tz_name)
+                    break
+            
+            # لو مفيش دولة محددة، نخليه يرجع توقيت مصر افتراضياً
+            if not found_country:
+                target_tz = pytz.timezone('Africa/Cairo')
+                found_country = 'مصر'
+            
+            current_time = datetime.now(target_tz)
+            time_str = current_time.strftime('%I:%M %p')
+            time_str = time_str.replace('AM', 'صباحاً').replace('PM', 'مساءً')
+            bot_reply = f"الساعة الآن في {found_country} هي {time_str}"
+            
+        # الرد على صاحب الشركة
+        elif "صاحب الشركة" in user_prompt or "مين صاحبك" in user_prompt or "مؤسس" in user_prompt or "صاحب شركه" in user_prompt:
             bot_reply = "صاحب ومؤسس شركة InnovaSoft هو المبرمج محمد!"
+            
+        # الرد على الهوية والصانع
         elif "اسمك" in user_prompt or "اسمك ايه" in user_prompt or "من أنت" in user_prompt or "انت مين" in user_prompt or "صنعك" in user_prompt or "شركتك" in user_prompt or "مين عملك" in user_prompt:
             bot_reply = "أنا اسمي ميمو، وتم تطويري وبرمجتي بواسطة شركة **InnovaSoft**!"
+            
+        # باقي الأسئلة للشات الحر
         else:
             with st.spinner("جاري التفكير وتوليد الصوت..."):
                 try:
