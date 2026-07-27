@@ -14,7 +14,6 @@ import streamlit.components.v1 as components
 # ==========================================
 st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="wide")
 
-# 🔴 تم وضع التوكن والـ Chat ID الخاص بك هنا
 TELEGRAM_BOT_TOKEN = "8394900129:AAENOZw1Zz0SNImSZB97ZKSMXUMudQRePg"     
 TELEGRAM_CHAT_ID = "8672781771"          
 
@@ -38,8 +37,6 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "user_email" not in st.session_state:
     st.session_state.user_email = ""
-
-ADMIN_EMAIL = "mohamed@gmail.com"  # إيميلك الشخصي
 
 # ==========================================
 # دالة إرسال إشعار فوري على تليجرام
@@ -74,7 +71,7 @@ if not st.session_state.logged_in:
         st.markdown("""
             <div style="text-align: center;">
                 <h1>🤖 مرحباً بك في ميمو الذكي</h1>
-                <p style="color: gray;">يرجى تسجيل الدخول بحساب جوجل للوصول إلى التطبيق</p>
+                <p style="color: gray;">يرجى تسجيل الدخول بريد جوجل الخاص بك للوصول إلى التطبيق</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -140,11 +137,9 @@ st.sidebar.markdown("---")
 menu_options = [
     "💬 الشات الصوتي الذكي", 
     "🎨 توليد الصور بالذكاء الاصطناعي", 
-    "✏️ محرر الصور والفلاتر"
+    "✏️ محرر الصور والفلاتر",
+    "📊 لوحة تحكم الأدمن (سجل الأبحاث)"
 ]
-
-if st.session_state.user_email.strip().lower() == ADMIN_EMAIL.strip().lower():
-    menu_options.append("📊 لوحة تحكم الأدمن (سجل الأبحاث)")
 
 app_mode = st.sidebar.radio("اختر القسم:", menu_options)
 
