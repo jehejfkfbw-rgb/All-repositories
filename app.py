@@ -16,7 +16,7 @@ st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="w
 TELEGRAM_BOT_TOKEN = "8394900129:AAENOZw1Zz0SNImSZB97ZKSMXUMudQRePg"     
 TELEGRAM_CHAT_ID = "8672781771"          
 
-# الرقم الأساسي للمدير (Admin)
+# رقم المدير الأساسي (مخفي وآمن)
 ADMIN_PHONE = "01213783090"
 
 st.markdown("""
@@ -35,7 +35,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# نظام حفظ الجلسة
 SESSION_FILE = "user_saved_phone_session.txt"
 
 if "logged_in" not in st.session_state:
@@ -59,23 +58,10 @@ if "pending_phone" not in st.session_state:
 if "step" not in st.session_state:
     st.session_state.step = "phone_input"
 
-# دالة إرسال كود التحقق عبر الواتساب
-def send_whatsapp_code(phone, code):
-    try:
-        clean_phone = phone.strip().replace("+", "")
-        message = f"أهلاً بك في تطبيق ميمو الذكي! رمز التحقق الخاص بك هو: {code}"
-        encoded_message = urllib.parse.quote(message)
-        api_url = f"https://api.callmebot.com/whatsapp.php?phone={clean_phone}&text={encoded_message}&apikey=YOUR_APIKEY"
-        requests.get(api_url, timeout=10)
-        return True
-    except Exception as e:
-        print(f"WhatsApp Error: {e}")
-        return False
-
 # دالة إرسال إشعار تليجرام مدعومة بـ utf-8
 def send_telegram_notification(phone, action_text):
     current_time = datetime.now(pytz.timezone('Africa/Cairo')).strftime('%Y-%m-%d %I:%M:%S %p')
-    message = f"🚨 إشعار من تطبيق ميمو!\n\n📱 الهاتف: {phone}\n🔍 التفاصيل: {action_text}\n⏰ الوقت: {current_time}"
+    message = f"🚨 إشعار من تطبيق ميمو!\n\n📱 رقم المستخدم: {phone}\n🔍 التفاصيل: {action_text}\n⏰ الوقت: {current_time}"
     
     try:
         log_entry = f"[{current_time}] | Phone: {phone} | Action: {action_text}\n"
@@ -109,35 +95,48 @@ if not st.session_state.logged_in:
         """, unsafe_allow_html=True)
         
         if st.session_state.step == "phone_input":
-            user_phone = st.text_input("أدخل رقم الهاتف:", placeholder="01213783090")
+            # خانة إدخال رقم الهاتف بشكل مخفي (Password Type) عشان محدش يشوفه لو حد قاعد جنبك
+            user_phone = st.text_input("أدخل رقم الهاتف:", type="password", placeholder="اكتب رقم هاتفك هنا...")
             
-            if st.button("متابعة", use_container_width=True):
+            if st.button("متابعة وإرسال طلب التحقق", use_container_width=True):
                 if user_phone:
                     clean_input = user_phone.strip()
+                    st.session_state.pending_phone = clean_input
+                    
                     if clean_input == ADMIN_PHONE:
-                        # دخول مباشر وفوري للمدير بدون كود
-                        st.session_state.logged_in = True
-                        st.session_state.user_phone = ADMIN_PHONE
-                        with open(SESSION_FILE, "w", encoding="utf-8") as f:
-                            f.write(ADMIN_PHONE)
-                        send_telegram_notification(ADMIN_PHONE, "دخول المدير (Admin) مباشرة بنجاح.")
-                        st.success("أهلاً بك يا فنان (المدير)! جارٍ فتح التطبيق...")
+                        # لو رقم المدير، نطلب منه يدخل 4 أصفار
+                        st.session_state.step = "admin_verify"
                         st.rerun()
                     else:
-                        # أي رقم تاني يبعت له كود تحقق
+                        # لو مستخدم عادي، نولد كود ونبعت لك إشعار على تليجرام بالرقم عشان تديه الكود
                         code = str(random.randint(1000, 9999))
                         st.session_state.whatsapp_code = code
-                        st.session_state.pending_phone = clean_input
-                        send_whatsapp_code(clean_input, code)
-                        st.session_state.step = "verify_whatsapp"
-                        st.success(f"تم إرسال كود التحقق! (رمز التجربة: {code})")
+                        send_telegram_notification(clean_input, f"طلب تسجيل دخول جديد! الكود الخاص به هو: {code}")
+                        st.session_state.step = "verify_user"
+                        st.success("تم إرسال طلبك للمدير لتسليمك كود التحقق.")
                         st.rerun()
                 else:
                     st.error("الرجاء إدخال رقم الهاتف.")
 
-        elif st.session_state.step == "verify_whatsapp":
-            st.info(f"الرقم قيد التحقق: **{st.session_state.pending_phone}**")
-            entered_code = st.text_input("أدخل رمز التحقق (4 أرقام):", max_chars=4)
+        elif st.session_state.step == "admin_verify":
+            st.info("أهلاً بك يا فنان (المدير). أدخل كود التحقق الخاص بك:")
+            admin_code_input = st.text_input("رمز التحقق:", type="password", max_chars=4)
+            
+            if st.button("دخول المدير", use_container_width=True):
+                if admin_code_input == "0000":
+                    st.session_state.logged_in = True
+                    st.session_state.user_phone = ADMIN_PHONE
+                    with open(SESSION_FILE, "w", encoding="utf-8") as f:
+                        f.write(ADMIN_PHONE)
+                    send_telegram_notification(ADMIN_PHONE, "تم دخول المدير بنجاح باستخدام 4 أصفار.")
+                    st.success("تم الدخول بنجاح! جارٍ فتح لوحة التحكم...")
+                    st.rerun()
+                else:
+                    st.error("الكود خطأ! المدير يدخل (0000).")
+
+        elif st.session_state.step == "verify_user":
+            st.info(f"الرقم قيد الانتظار: **{st.session_state.pending_phone}**")
+            entered_code = st.text_input("أدخل كود التحقق الذي استلمته:", max_chars=4)
             
             if st.button("تأكيد الدخول", use_container_width=True):
                 if entered_code == st.session_state.whatsapp_code:
@@ -145,7 +144,7 @@ if not st.session_state.logged_in:
                     st.session_state.user_phone = st.session_state.pending_phone
                     with open(SESSION_FILE, "w", encoding="utf-8") as f:
                         f.write(st.session_state.user_phone)
-                    send_telegram_notification(st.session_state.user_phone, "تسجيل دخول مستخدم جديد عبر الكود بنجاح.")
+                    send_telegram_notification(st.session_state.user_phone, "تم دخول المستخدم بنجاح بعد إدخال الكود الصحيح.")
                     st.success("تم التحقق بنجاح! جارٍ فتح التطبيق...")
                     st.rerun()
                 else:
@@ -157,7 +156,7 @@ if not st.session_state.logged_in:
 # ==========================================
 st.sidebar.title("🤖 ميمو AI - InnovaSoft")
 role_text = "مدير النظام (Admin)" if st.session_state.user_phone == ADMIN_PHONE else "مستخدم مسجل"
-st.sidebar.success(f"الهاتف: {st.session_state.user_phone}\nالصلاحية: {role_text}")
+st.sidebar.success(f"الصلاحية: {role_text}")
 
 if st.sidebar.button("تسجيل الخروج تماماً"):
     if os.path.exists(SESSION_FILE):
