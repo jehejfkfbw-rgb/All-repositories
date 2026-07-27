@@ -54,7 +54,7 @@ app_mode = st.sidebar.radio("اختر القسم:", [
 # ==========================================
 if app_mode == "💬 الشات الصوتي الذكي":
     st.title("💬 ميمو - الشات الصوتي")
-    st.write("اسأل عن أي شيء، أو اسألني عن اسمي ومن صنعني، واسمع الإجابة بصوت واضح!")
+    st.write("اسأل عن أي شيء، أو اسألني عن اسمي وصاحب الشركة، واسمع الإجابة بصوت واضح!")
     st.markdown("---")
 
     if "chat_history" not in st.session_state:
@@ -67,9 +67,11 @@ if app_mode == "💬 الشات الصوتي الذكي":
                 st.audio(message["audio"], format="audio/mp3")
 
     if user_prompt := st.chat_input("اكتب سؤالك هنا..."):
-        # التحقق إذا كان المستخدم يسأل عن الاسم أو الصانع
+        # التحقق من الأسئلة الخاصة بالهوية وصاحب الشركة مع اسم محمد واللقب
         lower_prompt = user_prompt.lower()
-        if "اسمك" in user_prompt or "اسمك ايه" in user_prompt or "من أنت" in user_prompt or "انت مين" in user_prompt or "صنعك" in user_prompt or "شركتك" in user_prompt or "مين عملك" in user_prompt or "InnovaSoft" in user_prompt:
+        if "صاحب الشركة" in user_prompt or "مين صاحبك" in user_prompt or "مؤسس" in user_prompt or "صاحب شركه" in user_prompt:
+            bot_reply = "صاحب ومؤسس شركة InnovaSoft هو المبرمج محمد!"
+        elif "اسمك" in user_prompt or "اسمك ايه" in user_prompt or "من أنت" in user_prompt or "انت مين" in user_prompt or "صنعك" in user_prompt or "شركتك" in user_prompt or "مين عملك" in user_prompt:
             bot_reply = "أنا اسمي ميمو، وتم تطويري وبرمجتي بواسطة شركة **InnovaSoft**!"
         else:
             with st.spinner("جاري التفكير وتوليد الصوت..."):
