@@ -7,14 +7,21 @@ import pytz
 import requests
 import random
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # ==========================================
-# 1. إعدادات تطبيق ميمو الذكي والتليجرام
+# 1. إعدادات التطبيق وتليجرام
 # ==========================================
 st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="wide")
 
 TELEGRAM_BOT_TOKEN = "8394900129:AAENOZw1Zz0SNImSZB97ZKSMXUMudQRePg"     
 TELEGRAM_CHAT_ID = "8672781771"          
+
+# بيانات الإيميل الخاص بك الذي ستقوم بالارسال منه
+SENDER_EMAIL = "jehejfkfbw@gmail.com"        
+SENDER_PASSWORD = "هنا_كلمة_مرور_التطبيق_الخاصة_بك"  # ضع هنا كلمة مرور التطبيق المكونة من 16 حرف الخاصة بحسابك
 
 st.markdown("""
     <style>
@@ -32,7 +39,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# نظام حفظ الدخول الدائم (حتى لو قفل أو مسح التطبيق ورجع)
+# نظام حفظ الجلسة (تسجيل الدخول مرة واحدة فقط للأبد على الجهاز)
 SESSION_FILE = "user_saved_session.txt"
 
 if "logged_in" not in st.session_state:
@@ -57,6 +64,30 @@ if "step" not in st.session_state:
     st.session_state.step = "register"
 
 # ==========================================
+# دالة إرسال رسالة الترحيب والأربع أرقام للبريد
+# ==========================================
+def send_welcome_and_code_email(receiver_email, code):
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = receiver_email
+        msg['Subject'] = "مرحباً بك في تطبيق ميمو - رمز التحقق"
+        
+        # رسالة ترحيب مدمجة مع الأربع أرقام
+        body = f"أهلاً بك في تطبيق ميمو الذكي! نحن سعداء انضمامك إلينا.\n\nرمز التحقق الخاص بك هو:\n{code}"
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+        
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.sendmail(SENDER_EMAIL, receiver_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Email Error: {e}")
+        return False
+
+# ==========================================
 # دالة إرسال إشعار فوري على تليجرام
 # ==========================================
 def send_telegram_notification(email, action_text):
@@ -78,7 +109,7 @@ def send_telegram_notification(email, action_text):
         print(f"Telegram Error: {e}")
 
 # ==========================================
-# 2. شاشة تسجيل الدخول (مرة واحدة فقط)
+# 2. شاشة تسجيل الدخول المتكاملة (مرة واحدة فقط)
 # ==========================================
 if not st.session_state.logged_in:
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -87,41 +118,50 @@ if not st.session_state.logged_in:
         st.markdown("""
             <div style="text-align: center;">
                 <h1>🤖 مرحباً بك في ميمو الذكي</h1>
-                <p style="color: gray;">تسجيل الدخول بالبريد الإلكتروني (لمرة واحدة فقط)</p>
+                <p style="color: gray;">تسجيل الدخول بالبريد وكلمة المرور (لمرة واحدة فقط)</p>
             </div>
         """, unsafe_allow_html=True)
         
         if st.session_state.step == "register":
             user_input_email = st.text_input("أدخل بريدك الإلكتروني (Gmail):", placeholder="example@gmail.com")
+            user_password = st.text_input("أدخل كلمة المرور:", type="password", placeholder="أدخل كلمة مرور قوية")
             
-            if st.button("إرسال رمز التحقق (4 أرقام)", use_container_width=True):
-                if user_input_email and "@gmail.com" in user_input_email:
+            if st.button("إرسال رمز التحقق إلى البريد", use_container_width=True):
+                if user_input_email and "@gmail.com" in user_input_email and len(user_password) >= 6:
                     code = str(random.randint(1000, 9999))
                     st.session_state.verification_code = code
                     st.session_state.pending_email = user_input_email
-                    st.session_state.step = "verify"
-                    st.success(f"تم إرسال كود التحقق لبريدك! (الكود التجريبي: {code})")
-                    st.rerun()
+                    
+                    # إرسال رسالة الترحيب والكود للإيميل
+                    sent_success = send_welcome_and_code_email(user_input_email, code)
+                    
+                    if sent_success:
+                        st.session_state.step = "verify"
+                        st.success("تم إرسال رسالة الترحيب ورمز التحقق إلى بريدك الإلكتروني بنجاح!")
+                        st.rerun()
+                    else:
+                        st.error("فشل إرسال البريد الإلكتروني، تأكد من إدخال كلمة مرور التطبيق (App Password) بشكل صحيح في الكود.")
                 else:
-                    st.error("الرجاء إدخال بريد جوجل صحيح يحتوي على @gmail.com")
+                    st.error("الرجاء إدخال بريد جوجل صحيح وكلمة مرور لا تقل عن 6 أحرف.")
                     
         elif st.session_state.step == "verify":
-            st.info(f"أدخل رمز التحقق (4 أرقام) المرسل إلى: {st.session_state.pending_email}")
-            entered_code = st.text_input("رمز التحقق:", max_chars=4)
+            st.info(f"تم إرسال رسالة الترحيب والرمز المكون من 4 أرقام إلى: **{st.session_state.pending_email}**")
+            
+            entered_code = st.text_input("أدخل الأربع أرقام الموجودة في بريدك:", max_chars=4)
             
             if st.button("تأكيد الدخول النهائي", use_container_width=True):
                 if entered_code == st.session_state.verification_code:
                     st.session_state.logged_in = True
                     st.session_state.user_email = st.session_state.pending_email
                     
-                    # حفظ الجلسة نهائياً على الجهاز بحيث يدخل مرة واحدة فقط ولا يطلب تسجيل دخول مجدداً
+                    # حفظ الجلسة ليدخل مرة واحدة للأبد
                     with open(SESSION_FILE, "w", encoding="utf-8") as f:
                         f.write(st.session_state.user_email)
                     
-                    # إرسال إشعار تليجرام فوري بتسجيل دخول المستخدم
-                    send_telegram_notification(st.session_state.user_email, "تم تسجيل دخول المستخدم بنجاح لأول مرة!")
+                    # إرسال إشعار تليجرام فوري بتسجيل دخول المستخدم بالبريد
+                    send_telegram_notification(st.session_state.user_email, f"تم تسجيل دخول المستخدم بنجاح بالبريد: {st.session_state.user_email}")
                     
-                    st.success("تم تسجيل الدخول بنجاح ولن يطلب منك مرة أخرى!")
+                    st.success("تم تسجيل الدخول بنجاح ولن يطلب منك مرة أخرى عند فتح التطبيق!")
                     st.rerun()
                 else:
                     st.error("رمز التحقق غير صحيح، حاول مرة أخرى.")
@@ -134,7 +174,6 @@ if not st.session_state.logged_in:
 st.sidebar.title("🤖 ميمو AI - InnovaSoft")
 st.sidebar.success(f"مرحباً: {st.session_state.user_email}")
 
-# زر مسح الذاكرة أو تسجيل الخروج في حال رغب المستخدم بالخروج يدوياً
 if st.sidebar.button("تسجيل الخروج تماماً"):
     if os.path.exists(SESSION_FILE):
         os.remove(SESSION_FILE)
@@ -164,7 +203,6 @@ if app_mode == "💬 الشات الصوتي الذكي":
             st.markdown(message["content"])
 
     if user_prompt := st.chat_input("اكتب سؤالك أو بحثك هنا..."):
-        # إرسال إشعار فوري إلى تليجرام بالبحث واسم المستخدم
         send_telegram_notification(st.session_state.user_email, f"البحث عن: {user_prompt}")
         
         if "طورك" in user_prompt or "صنعك" in user_prompt or "من أنت" in user_prompt or "صاحب الشركة" in user_prompt:
