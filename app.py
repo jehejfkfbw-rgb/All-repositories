@@ -1,230 +1,148 @@
 import streamlit as st
-import g4f
-from PIL import Image, ImageEnhance
-import urllib.parse
-from gtts import gTTS
-import os
-from datetime import datetime
-import pytz
-import requests
 
-# ==========================================
-# 1. إعدادات تطبيق ميمو الذكي
-# ==========================================
-st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="wide")
+# 1. إعدادات الصفحة
+st.set_page_config(
+    page_title="تطبيق ميمو للذكاء الاصطناعي",
+    page_icon="🤖",
+    layout="wide"
+)
 
+# 2. تهيئة سجل البحث في الـ Session State
+if "search_history" not in st.session_state:
+    st.session_state.search_history = []
+
+# --- تنسيق الواجهة لتكون القائمة الجانبية على اليمين ودعم اللغة العربية ---
 st.markdown("""
     <style>
+    .stApp {
+        direction: rtl;
+        text-align: right;
+    }
     [data-testid="stSidebar"] {
-        background-color: #f4f4f4;
-    }
-    h1, h2, h3 {
-        color: #C8102E;
-    }
-    .stButton>button {
-        background-color: #C8102E;
-        color: white;
-        border-radius: 5px;
+        right: 0;
+        left: auto;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# دالة تحويل النص إلى صوت
-def text_to_speech(text):
-    try:
-        tts = gTTS(text=text, lang='ar', slow=False)
-        audio_file = "memo_voice.mp3"
-        tts.save(audio_file)
-        return audio_file
-    except:
-        return None
+# ---------------- القائمة الجانبية (على اليمين) ----------------
+with st.sidebar:
+    st.header("🔍 البحث والسجل")
+    
+    # مربع ادخال البحث
+    search_query = st.text_input("ابحث عن خدمة أو كلمة:")
+    
+    if st.button("بحث"):
+        if search_query.strip() != "":
+            st.session_state.search_history.insert(0, search_query.strip())
+            st.success(f"تم البحث عن: {search_query}")
 
-# دالة جلب مواقيت الصلاة الحقيقية من API
-def get_prayer_times(country):
-    # خريطة لربط اسم الدولة بالمدينة المطلوبة للـ API
-    cities = {
-        'مصر': 'Cairo', 'السعودية': 'Riyadh', 'الإمارات': 'Dubai',
-        'الكويت': 'Kuwait', 'قطر': 'Doha', 'البحرين': 'Manama',
-        'عمان': 'Muscat', 'الأردن': 'Amman', 'فلسطين': 'Jerusalem',
-        'لبنان': 'Beirut', 'سوريا': 'Damascus', 'العراق': 'Baghdad',
-        'اليمن': 'Sana a', 'السودان': 'Khartoum', 'ليبيا': 'Tripoli',
-        'تونس': 'Tunis', 'الجزائر': 'Algiers', 'المغرب': 'Rabat',
-        'موريتانيا': 'Nouakchott', 'أمريكا': 'New York'
-    }
-    city = cities.get(country, 'Cairo')
-    try:
-        url = f"http://api.aladhan.com/v1/timingsByCity?city={city}&country={country}&method=5"
-        response = requests.get(url)
-        data = response.json()
-        if data['code'] == 200:
-            return data['data']['timings']
-    except:
-        pass
-    return None
+    st.write("---")
+    st.subheader("📜 سجل البحث:")
+    
+    if st.session_state.search_history:
+        for item in st.session_state.search_history:
+            st.markdown(f"• **{item}**")
+            
+        if st.button("تفريغ السجل 🗑️"):
+            st.session_state.search_history = []
+            st.rerun()
+    else:
+        st.write("لا يوجد بحث سابق حتى الآن.")
 
-# ==========================================
-# 2. القائمة الجانبية (Sidebar - التوقيت والأذان التلقائي)
-# ==========================================
-st.sidebar.title("🤖 ميمو AI - إنتاج InnovaSoft")
-st.sidebar.write("شات ذكي صوتي + توليد صور + محرر")
-st.sidebar.markdown("---")
+# ---------------- محتوى الصفحة الرئيسي ----------------
+st.title("🤖 مرحباً بك! أنا الذكاء الاصطناعي ميمو (Memo)")
+st.subheader("مساعدك الذكي ودليلك لأفضل أدوات الذكاء الاصطناعي")
 
-app_mode = st.sidebar.radio("اختر القسم:", [
-    "💬 الشات الصوتي الذكي", 
-    "🎨 توليد الصور بالذكاء الاصطناعي", 
-    "✏️ محرر الصور والفلاتر"
+st.markdown("""
+أهلاً بك في موقعنا! أنا **ميمو**، المساعد الذكي الخاص بالموقع. يمكنك استخدام الخانة بالأسفل لسؤالي عن أي شيء أو الاستفسار عن المطور، أو تصفح أفضل خدمات الذكاء الاصطناعي المجمعة لك بالأسفل.
+""")
+
+st.write("---")
+
+# ---------------- قسم اسأل ميمو ----------------
+st.subheader("💬 اسأل ميمو")
+user_question = st.text_input("اكتب سؤالك هنا (مثال: مين صاحبك؟ / Who created you?):")
+
+if user_question:
+    q_lower = user_question.lower()
+    # الكلمات المفتاحية للتعرف على السؤال عن صاحب التطبيق أو الشركة
+    owner_keywords = [
+        "مين صاحبك", "من صاحبك", "مين صاحب الشركة", "صاحب الشركة", 
+        "مين عاملك", "من عملك", "مين المطور", "من المطور", "صاحبك", "مين المالك",
+        "who created", "who made", "who is the owner", "creator", "developer", "owner"
+    ]
+    
+    if any(keyword in q_lower for keyword in owner_keywords):
+        st.success("🤖 **Memo:** This application was created and developed by Mohamed Adel Mohamed Ali.")
+    else:
+        st.info("🤖 **Memo:** أهلاً بك! أنا ميمو، يمكنك سؤالي عن مطور التطبيق أو البحث عن الأدوات بالأسفل.")
+
+st.write("---")
+
+# نتائج البحث
+if search_query:
+    st.info(f"🔎 نتائج البحث عن: **{search_query}**")
+
+# تبويبات الخدمات باللغة العربية
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📝 أدوات النصوص والمحاثة", 
+    "🎨 إنشاء الصور والفنون", 
+    "💻 البرمجة والتطوير", 
+    "🎙️ الصوت والموسيقى"
 ])
 
-# قسم مواقيت الصلاة والأذان التلقائي
-st.sidebar.markdown("---")
-st.sidebar.subheader("🕌 مواقيت الصلاة والأذان التلقائي")
-selected_country_sidebar = st.sidebar.selectbox("اختر الدولة:", [
-    'مصر', 'السعودية', 'الإمارات', 'الكويت', 'قطر', 'البحرين', 'عمان', 
-    'الأردن', 'فلسطين', 'لبنان', 'سوريا', 'العراق', 'اليمن', 'السودان', 
-    'ليبيا', 'تونس', 'الجزائر', 'المغرب', 'موريتانيا', 'أمريكا'
-])
+with tab1:
+    st.header("توليد النصوص والمساعدات الذكية")
+    st.write("أفضل أدوات الذكاء الاصطناعي للكتابة، البحث، وتوليد الأفكار.")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("شات جي بي تي (ChatGPT)")
+        st.markdown("الأداة الأشهر عالمياً للمحادثة، كتابة المقالات، وتلخيص النصوص.")
+        st.link_button("زيارة ChatGPT", "https://chatgpt.com")
+    with col2:
+        st.subheader("جوجل جيميناي (Gemini)")
+        st.markdown("ذكاء جوجل المتطور المرتبط بالبحث المباشر ومعالجة البيانات.")
+        st.link_button("زيارة Gemini", "https://gemini.google.com")
 
-# جلب المواقيت اليومية
-timings = get_prayer_times(selected_country_sidebar)
-if timings:
-    st.sidebar.write(f"🌅 **الفجر:** {timings.get('Fajr')}")
-    st.sidebar.write(f"☀️ **الشروق:** {timings.get('Sunrise')}")
-    st.sidebar.write(f"عب **الظهر:** {timings.get('Dhuhr')}")
-    st.sidebar.write(f"🌤️ **العصر:** {timings.get('Asr')}")
-    st.sidebar.write(f"🌇 **المغرب:** {timings.get('Maghrib')}")
-    st.sidebar.write(f"🌙 **العشاء:** {timings.get('Isha')}")
+with tab2:
+    st.header("إنشاء الصور وتوليد الفنون")
+    st.write("حول أفكارك وتخيلاتك إلى صور وفنون فائقة الدقة.")
+    col3, col4 = st.columns(2)
+    with col3:
+        st.subheader("ميدجيرني (Midjourney)")
+        st.markdown("أفضل أداة لتوليد صور سينمائية وفنية عالية الجودة.")
+        st.link_button("زيارة Midjourney", "https://www.midjourney.com")
+    with col4:
+        st.subheader("دالي 3 (DALL-E 3)")
+        st.markdown("نموذج شركة OpenAI الذكي لفهم الوصف الدقيق وإنشاء الصور.")
+        st.link_button("زيارة DALL-E 3", "https://openai.com/dall-e-3")
 
-# تشغيل صوت الأذان (الله أكبر) يدوياً أو تلقائياً عند الحاجة
-st.sidebar.markdown("---")
-st.sidebar.markdown("🔊 **تشغيل صوت الأذان:**")
-adhan_audio_url = "https://www.islamcan.com/audio/adhan/azan01.mp3"
-st.sidebar.audio(adhan_audio_url, format="audio/mp3")
+with tab3:
+    st.header("البرمجة وتطوير البرمجيات")
+    st.write("أدوات مساعدة للمبرمجين لكتابة الكود وتصحيح الأخطاء بسرعة.")
+    col5, col6 = st.columns(2)
+    with col5:
+        st.subheader("جيت هاب كوبايلوت (GitHub Copilot)")
+        st.markdown("مساعد المبرمجين الذكي الذي يكمل الأكواد داخل محرر الأكواد.")
+        st.link_button("زيارة GitHub Copilot", "https://github.com/features/copilot")
+    with col6:
+        st.subheader("كلود (Claude)")
+        st.markdown("نموذج متقدم يمتاز بدقة عالية في فهم البرمجيات المنطقية والأكواد الطويلة.")
+        st.link_button("زيارة Claude", "https://claude.ai")
 
-# ==========================================
-# 3. قسم الشات الصوتي الذكي (مع حفظ الذاكرة)
-# ==========================================
-if app_mode == "💬 الشات الصوتي الذكي":
-    st.title("💬 ميمو - الشات الصوتي")
-    st.write("اسأل عن مواقيت الصلاة، الوقت، أو اسألني عن صاحب الشركة، وسأحفظ محادثتنا بالكامل!")
-    st.markdown("---")
+with tab4:
+    st.header("توليد الصوت والموسيقى")
+    st.write("تحويل النصوص إلى أصوات بشرية واضحة وإنشاء مقاطع موسيقية.")
+    col7, col8 = st.columns(2)
+    with col7:
+        st.subheader("إليفين لابس (ElevenLabs)")
+        st.markdown("أفضل أداة لتوليد التعليق الصوتي والتعرف على الأصوات بدقة متناهية.")
+        st.link_button("زيارة ElevenLabs", "https://elevenlabs.io")
+    with col8:
+        st.subheader("سونو (Suno AI)")
+        st.markdown("إنشاء أغاني كاملة مع الموسيقى والكلمات والألحان من الوصف النصي.")
+        st.link_button("زيارة Suno", "https://suno.com")
 
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-
-    if st.button("🗑️ مسح الذاكرة وبدء محادثة جديدة"):
-        st.session_state.chat_history = []
-        st.rerun()
-
-    for idx, message in enumerate(st.session_state.chat_history):
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-            if message["role"] == "assistant" and "audio" in message:
-                st.audio(message["audio"], format="audio/mp3")
-
-    if user_prompt := st.chat_input("اكتب سؤالك هنا..."):
-        lower_prompt = user_prompt.lower()
-        
-        # الرد على مواقيت الصلاة بدقة
-        if "صلاة" in user_prompt or "أذان" in user_prompt or "مواقيت" in user_prompt:
-            found_country = 'مصر'
-            timezones_dict = {
-                'مصر': 'Africa/Cairo', 'السعودية': 'Asia/Riyadh', 'الإمارات': 'Asia/Dubai',
-                'الكويت': 'Asia/Kuwait', 'قطر': 'Asia/Qatar', 'البحرين': 'Asia/Bahrain',
-                'عمان': 'Asia/Muscat', 'الأردن': 'Asia/Amman', 'فلسطين': 'Asia/Gaza',
-                'لبنان': 'Asia/Beirut', 'سوريا': 'Asia/Damascus', 'العراق': 'Asia/Baghdad',
-                'اليمن': 'Asia/Aden', 'السودان': 'Africa/Khartoum', 'ليبيا': 'Africa/Tripoli',
-                'تونس': 'Africa/Tunis', 'الجزائر': 'Africa/Algiers', 'المغرب': 'Africa/Casablanca',
-                'موريتانيا': 'Africa/Nouakchott', 'أمريكا': 'America/New_York'
-            }
-            for country in timezones_dict.keys():
-                if country in user_prompt:
-                    found_country = country
-                    break
-            
-            p_times = get_prayer_times(found_country)
-            if p_times:
-                bot_reply = f"مواقيت الصلاة اليوم في {found_country}:\n- الفجر: {p_times.get('Fajr')}\n- الظهر: {p_times.get('Dhuhr')}\n- العصر: {p_times.get('Asr')}\n- المغرب: {p_times.get('Maghrib')}\n- العشاء: {p_times.get('Isha')}"
-            else:
-                bot_reply = "عذراً، لم أستطيع جلب مواقيت الصلاة الآن."
-
-        elif "الساعة" in user_prompt or "الوقت" in user_prompt or "كام الساعه" in lower_prompt:
-            bot_reply = "راجع الشريط الجانبي (Sidebar) لمعرفة الوقت الدقيق ومواقيت الصلاة لكل الدول مباشرة!"
-            
-        elif "صاحب الشركة" in user_prompt or "مين صاحبك" in user_prompt or "مؤسس" in user_prompt or "صاحب شركه" in user_prompt:
-            bot_reply = "صاحب ومؤسس شركة InnovaSoft هو المبرمج محمد!"
-            
-        elif "اسمك" in user_prompt or "اسمك ايه" in user_prompt or "من أنت" in user_prompt or "انت مين" in user_prompt or "صنعك" in user_prompt or "شركتك" in user_prompt:
-            bot_reply = "أنا اسمي ميمو، وتم تطويري وبرمجتي بواسطة شركة **InnovaSoft**!"
-            
-        else:
-            with st.spinner("جاري التفكير وتوليد الصوت..."):
-                try:
-                    messages_list = [{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_history]
-                    messages_list.append({"role": "user", "content": user_prompt})
-                    
-                    response = g4f.ChatCompletion.create(
-                        model=g4f.models.default,
-                        messages=messages_list,
-                    )
-                    bot_reply = str(response)
-                except Exception as e:
-                    bot_reply = f"عذراً حدث خطأ بسيط: {e}"
-
-        st.session_state.chat_history.append({"role": "user", "content": user_prompt})
-        with st.chat_message("user"):
-            st.markdown(user_prompt)
-
-        with st.chat_message("assistant"):
-            st.markdown(bot_reply)
-            audio_path = text_to_speech(bot_reply)
-            if audio_path:
-                st.audio(audio_path, format="audio/mp3")
-                st.session_state.chat_history.append({"role": "assistant", "content": bot_reply, "audio": audio_path})
-            else:
-                st.session_state.chat_history.append({"role": "assistant", "content": bot_reply})
-
-# ==========================================
-# 4. قسم توليد الصور بالذكاء الاصطناعي
-# ==========================================
-elif app_mode == "🎨 توليد الصور بالذكاء الاصطناعي":
-    st.title("🎨 ميمو - استوديو توليد الصور")
-    st.write("صف أي صورة تتخيلها وسيتم رسمها فوراً!")
-    st.markdown("---")
-
-    image_prompt = st.text_input("صف الصورة:", placeholder="مثال: مدينة مستقبلية مضيئة")
-
-    if st.button("توليد الصورة"):
-        if image_prompt:
-            with st.spinner("جاري رسم الصورة..."):
-                try:
-                    encoded_prompt = urllib.parse.quote(image_prompt)
-                    image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
-                    st.success("تم توليد الصورة بنجاح!")
-                    st.image(image_url, caption=image_prompt, use_column_width=True)
-                except Exception as e:
-                    st.error(f"خطأ: {e}")
-        else:
-            st.warning("الرجاء كتابة وصف للصورة أولاً.")
-
-# ==========================================
-# 5. قسم محرر الصور والفلاتر
-# ==========================================
-elif app_mode == "✏️ محرر الصور والفلاتر":
-    st.title("✏️ ميمو - محرر الصور")
-    st.write("ارفع صورتك وعدل إضاءتها وتباينها بلمسة زر.")
-    st.markdown("---")
-
-    file = st.file_uploader("اختر صورة...", type=["jpg", "png", "jpeg"])
-    if file:
-        img = Image.open(file)
-        st.image(img, caption="الصورة الأصلية", use_column_width=True)
-
-        st.sidebar.markdown("### أدوات التعديل")
-        brightness = st.sidebar.slider("الإضاءة", 0.1, 3.0, 1.0)
-        contrast = st.sidebar.slider("التباين", 0.1, 3.0, 1.0)
-
-        edited = ImageEnhance.Brightness(img).enhance(brightness)
-        edited = ImageEnhance.Contrast(edited).enhance(contrast)
-
-        st.subheader("الصورة النهائية:")
-        st.image(edited, caption="بعد التعديل", use_column_width=True)
+st.write("---")
+st.caption("🤖 تطبيق ميمو الذكي © 2026 - تم التطوير بواسطة محمد عادل محمد علي")
