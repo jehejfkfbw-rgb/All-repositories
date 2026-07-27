@@ -7,6 +7,7 @@ import os
 from datetime import datetime
 import pytz
 import requests
+import streamlit.components.v1 as components
 
 # ==========================================
 # 1. إعدادات تطبيق ميمو الذكي
@@ -29,14 +30,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# دالة تحويل النص إلى صوت بصوت رايق وواضح
+# دالة تحويل النص إلى صوت محسنة بالكامل لنطق واضح جداً، نبرة رايقة، وبدون سرعة
 def text_to_speech(text):
     try:
-        tts = gTTS(text=text, lang='ar', slow=False)
+        # تنظيف النص لضمان النطق السليم والواضح
+        clean_text = text.replace("*", "").replace("#", "").replace("-", " ")
+        
+        # استخدام اللغة العربية الفصحى بوضوح تام (slow=False لنطق طبيعي ورايق)
+        tts = gTTS(text=clean_text, lang='ar', slow=False)
         audio_file = "memo_voice.mp3"
         tts.save(audio_file)
         return audio_file
-    except:
+    except Exception as e:
+        print(f"Error in TTS: {e}")
         return None
 
 # دالة جلب مواقيت الصلاة من API
@@ -62,7 +68,7 @@ def get_prayer_times(country):
     return None
 
 # ==========================================
-# 2. القائمة الجانبية (Sidebar - مواقيت الصلاة والعداد التنازلي)
+# 2. القائمة الجانبية (Sidebar - مواقيت الصلاة والعداد التنازلي الحي)
 # ==========================================
 st.sidebar.title("🤖 ميمو AI - شركة Inovasoft")
 st.sidebar.write("مرحباً بك في ميمو الذكي")
@@ -99,50 +105,81 @@ st.sidebar.write(f"⏰ الوقت الحالي: **{sidebar_time}**")
 
 timings = get_prayer_times(selected_country_sidebar)
 if timings:
+    fajr = timings.get('Fajr')
+    dhuhr = timings.get('Dhuhr')
+    asr = timings.get('Asr')
+    maghrib = timings.get('Maghrib')
+    isha = timings.get('Isha')
+
     st.sidebar.markdown(f"""
-    * 🌅 **الفجر:** {timings.get('Fajr')}
-    * ☀️ **الظهر:** {timings.get('Dhuhr')}
-    * 🌤️ **العصر:** {timings.get('Asr')}
-    * 🌇 **المغرب:** {timings.get('Maghrib')}
-    * 🌙 **العشاء:** {timings.get('Isha')}
+    * 🌅 **الفجر:** {fajr}
+    * ☀️ **الظهر:** {dhuhr}
+    * 🌤️ **العصر:** {asr}
+    * 🌇 **المغرب:** {maghrib}
+    * 🌙 **العشاء:** {isha}
     """)
     
-    # حساب العد التنازلي بدقة للصلاة القادمة
-    current_total_seconds = now.hour * 3600 + now.minute * 60 + now.second
-    prayer_list = [
-        ("الفجر", timings.get('Fajr')),
-        ("الظهر", timings.get('Dhuhr')),
-        ("العصر", timings.get('Asr')),
-        ("المغرب", timings.get('Maghrib')),
-        ("العشاء", timings.get('Isha'))
-    ]
-    
-    next_prayer_name = "الفجر (غداً)"
-    next_prayer_diff_seconds = 999999
-    
-    for p_name, p_time_str in prayer_list:
-        if p_time_str:
-            p_parts = p_time_str.split(':')
-            p_hour, p_min = int(p_parts[0]), int(p_parts[1])
-            p_total_seconds = p_hour * 3600 + p_min * 60
-            
-            diff = p_total_seconds - current_total_seconds
-            if diff > 0 and diff < next_prayer_diff_seconds:
-                next_prayer_diff_seconds = diff
-                next_prayer_name = p_name
+    # عداد تنازلي حقيقي يعمل بلغة JavaScript ليتحدث ثانية بثانية بدقة تامة
+    countdown_html = f"""
+    <div style="background-color: #e3f2fd; padding: 12px; border-radius: 8px; border: 1px solid #90caf9; text-align: center; direction: rtl; font-family: sans-serif;">
+        <p style="margin: 0; font-size: 14px; font-weight: bold; color: #0d47a1;">⏳ العد التنازلي للصلاة القادمة:</p>
+        <p id="next-prayer-title" style="margin: 5px 0; font-size: 15px; font-weight: bold; color: #c62828;"></p>
+        <div id="countdown-timer" style="font-size: 16px; font-weight: bold; color: #1b5e20;">جاري الحساب...</div>
+    </div>
 
-    # إذا انتهت كل صلوات اليوم، يكون العد التنازلي لصلاة الفجر في اليوم التالي
-    if next_prayer_diff_seconds == 999999:
-        fajr_parts = timings.get('Fajr').split(':')
-        fajr_total = int(fajr_parts[0]) * 3600 + int(fajr_parts[1]) * 60
-        next_prayer_diff_seconds = (24 * 3600 - current_total_seconds) + fajr_total
-        next_prayer_name = "الفجر (غداً)"
+    <script>
+    const timings = {{
+        "الفجر": "{fajr}",
+        "الظهر": "{dhuhr}",
+        "العصر": "{asr}",
+        "المغرب": "{maghrib}",
+        "العشاء": "{isha}"
+    }};
 
-    hours_left = next_prayer_diff_seconds // 3600
-    mins_left = (next_prayer_diff_seconds % 3600) // 60
-    secs_left = next_prayer_diff_seconds % 60
+    function updateCountdown() {{
+        const now = new Date();
+        let targetPrayer = "";
+        let targetTime = null;
+        let minDiff = Infinity;
 
-    st.sidebar.info(f"⏳ **العداد التنازلي للصلاة القادمة ({next_prayer_name}):**\n\n🕒 **{hours_left} ساعة : {mins_left} دقيقة : {secs_left} ثانية**")
+        for (let [name, timeStr] of Object.entries(timings)) {{
+            if (!timeStr) continue;
+            let parts = timeStr.split(":");
+            let pDate = new Date();
+            pDate.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
+
+            let diff = pDate - now;
+            if (diff > 0 && diff < minDiff) {{
+                minDiff = diff;
+                targetPrayer = name;
+                targetTime = pDate;
+            }}
+        }}
+
+        if (targetTime === null) {{
+            let fajrParts = timings["الفجر"].split(":");
+            let pDate = new Date();
+            pDate.setDate(pDate.getDate() + 1);
+            pDate.setHours(parseInt(fajrParts[0]), parseInt(fajrParts[1]), 0, 0);
+            minDiff = pDate - now;
+            targetPrayer = "الفجر (غداً)";
+            targetTime = pDate;
+        }}
+
+        let hours = Math.floor((minDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        let minutes = Math.floor((minDiff % (1000 * 60 * 60)) / (1000 * 60));
+        let seconds = Math.floor((minDiff % (1000 * 60)) / 1000);
+
+        document.getElementById("next-prayer-title").innerText = "صلاة " + targetPrayer;
+        document.getElementById("countdown-timer").innerText = 
+            hours + " ساعة : " + minutes + " دقيقة : " + seconds + " ثانية";
+    }}
+
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+    </script>
+    """
+    components.html(countdown_html, height=110)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("🔊 **تشغيل صوت الأذان (الله أكبر):**")
@@ -175,7 +212,7 @@ if app_mode == "💬 الشات الصوتي الذكي":
         
         # الرد على المطور واسم الشركة
         if "طورك" in user_prompt or "صنعك" in user_prompt or "عملك" in user_prompt or "من أنت" in user_prompt or "انت مين" in user_prompt or "صاحب الشركة" in user_prompt or "مين صاحبك" in user_prompt:
-            bot_reply = "The application was created by the owner of the company, Mohamed Adel, through Inovasoft company."
+            bot_reply = "تم تطويري بواسطة المنهندس محمد عادل، من خلال شركة إنوفا سوفت InnovaSoft."
             
         elif "صلاة" in user_prompt or "أذان" in user_prompt or "مواقيت" in user_prompt:
             found_country = 'مصر'
