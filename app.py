@@ -29,7 +29,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# دالة تحويل النص إلى صوت
+# دالة تحويل النص إلى صوت بصوت رايق وواضح
 def text_to_speech(text):
     try:
         tts = gTTS(text=text, lang='ar', slow=False)
@@ -62,9 +62,9 @@ def get_prayer_times(country):
     return None
 
 # ==========================================
-# 2. القائمة الجانبية (Sidebar - مواقيت الصلاة والعد التنازلي)
+# 2. القائمة الجانبية (Sidebar - مواقيت الصلاة والعداد التنازلي)
 # ==========================================
-st.sidebar.title("🤖 ميمو AI - شركة InnovaSoft")
+st.sidebar.title("🤖 ميمو AI - شركة Inovasoft")
 st.sidebar.write("مرحباً بك في ميمو الذكي")
 st.sidebar.markdown("---")
 
@@ -75,7 +75,7 @@ app_mode = st.sidebar.radio("اختر القسم:", [
 ])
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("🕌 مواقيت الصلاة والعد التنازلي")
+st.sidebar.subheader("🕌 مواقيت الصلاة والعداد التنازلي")
 selected_country_sidebar = st.sidebar.selectbox("اختر الدولة:", [
     'مصر', 'السعودية', 'الإمارات', 'الكويت', 'قطر', 'البحرين', 'عمان', 
     'الأردن', 'فلسطين', 'لبنان', 'سوريا', 'العراق', 'اليمن', 'السودان', 
@@ -94,7 +94,7 @@ timezones_dict = {
 
 current_tz = pytz.timezone(timezones_dict.get(selected_country_sidebar, 'Africa/Cairo'))
 now = datetime.now(current_tz)
-sidebar_time = now.strftime('%I:%M %p').replace('AM', 'صباحاً').replace('PM', 'مساءً')
+sidebar_time = now.strftime('%I:%M:%S %p').replace('AM', 'صباحاً').replace('PM', 'مساءً')
 st.sidebar.write(f"⏰ الوقت الحالي: **{sidebar_time}**")
 
 timings = get_prayer_times(selected_country_sidebar)
@@ -107,7 +107,8 @@ if timings:
     * 🌙 **العشاء:** {timings.get('Isha')}
     """)
     
-    current_minutes = now.hour * 60 + now.minute
+    # حساب العد التنازلي بدقة للصلاة القادمة
+    current_total_seconds = now.hour * 3600 + now.minute * 60 + now.second
     prayer_list = [
         ("الفجر", timings.get('Fajr')),
         ("الظهر", timings.get('Dhuhr')),
@@ -117,22 +118,31 @@ if timings:
     ]
     
     next_prayer_name = "الفجر (غداً)"
-    next_prayer_diff = 99999
+    next_prayer_diff_seconds = 999999
     
     for p_name, p_time_str in prayer_list:
         if p_time_str:
-            p_hour, p_min = map(int, p_time_str.split(':'))
-            p_total_minutes = p_hour * 60 + p_min
-            if p_total_minutes > current_minutes:
-                diff = p_total_minutes - current_minutes
-                if diff < next_prayer_diff:
-                    next_prayer_diff = diff
-                    next_prayer_name = p_name
-                    
-    hours_left = next_prayer_diff // 60
-    mins_left = next_prayer_diff % 60
-    if next_prayer_diff != 99999:
-        st.sidebar.info(f"⏳ باقي على صلاة **{next_prayer_name}**: حوالي {hours_left} ساعة و {mins_left} دقيقة")
+            p_parts = p_time_str.split(':')
+            p_hour, p_min = int(p_parts[0]), int(p_parts[1])
+            p_total_seconds = p_hour * 3600 + p_min * 60
+            
+            diff = p_total_seconds - current_total_seconds
+            if diff > 0 and diff < next_prayer_diff_seconds:
+                next_prayer_diff_seconds = diff
+                next_prayer_name = p_name
+
+    # إذا انتهت كل صلوات اليوم، يكون العد التنازلي لصلاة الفجر في اليوم التالي
+    if next_prayer_diff_seconds == 999999:
+        fajr_parts = timings.get('Fajr').split(':')
+        fajr_total = int(fajr_parts[0]) * 3600 + int(fajr_parts[1]) * 60
+        next_prayer_diff_seconds = (24 * 3600 - current_total_seconds) + fajr_total
+        next_prayer_name = "الفجر (غداً)"
+
+    hours_left = next_prayer_diff_seconds // 3600
+    mins_left = (next_prayer_diff_seconds % 3600) // 60
+    secs_left = next_prayer_diff_seconds % 60
+
+    st.sidebar.info(f"⏳ **العداد التنازلي للصلاة القادمة ({next_prayer_name}):**\n\n🕒 **{hours_left} ساعة : {mins_left} دقيقة : {secs_left} ثانية**")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("🔊 **تشغيل صوت الأذان (الله أكبر):**")
