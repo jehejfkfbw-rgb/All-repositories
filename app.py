@@ -1,199 +1,132 @@
 import streamlit as st
+import google.generativeai as genai
 from PIL import Image, ImageEnhance, ImageFilter
-import urllib.request
-import json
 import urllib.parse
 import io
 
 # ==========================================
-# 1. إعدادات وتصميم التطبيق
+# 1. إعدادات تطبيق ميمو
 # ==========================================
-st.set_page_config(page_title="Memo AI Studio", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="wide")
 
 st.markdown("""
     <style>
     [data-testid="stSidebar"] {
-        background-color: #f9f9f9;
+        background-color: #f4f4f4;
     }
     h1, h2, h3 {
-        color: #C8102E; /* اللون الأحمر الخاص بالأهلي */
+        color: #C8102E;
     }
     .stButton>button {
         background-color: #C8102E;
         color: white;
         border-radius: 5px;
     }
-    .stButton>button:hover {
-        background-color: #A00D24;
-        color: white;
-    }
     </style>
 """, unsafe_allow_html=True)
+
+# سحب المفتاح بطريقة سرية وآمنة من إعدادات Streamlit Cloud
+try:
+    API_KEY = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=API_KEY)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    api_ready = True
+except Exception:
+    api_ready = False
 
 # ==========================================
 # 2. القائمة الجانبية (Sidebar)
 # ==========================================
-st.sidebar.title("🤖 ميمو الشامل")
-st.sidebar.write("مساعدك الذكي المتكامل (بحث شامل، توليد، تحرير)")
+st.sidebar.title("🤖 ميمو AI - إصدار 2026")
+st.sidebar.write("المساعد الذكي المتطور (شات ذكي + توليد صور + محرر)")
 st.sidebar.markdown("---")
 
-app_mode = st.sidebar.radio("اختر الوظيفة:", [
-    "🌐 البحث الذكي (شامل + تخصيص الأهلي)", 
+app_mode = st.sidebar.radio("اختر القسم:", [
+    "💬 الشات الذكي (اسأل عن أي شيء)", 
     "🎨 توليد الصور بالذكاء الاصطناعي", 
     "✏️ محرر الصور والفلاتر"
 ])
 
-st.sidebar.markdown("---")
-st.sidebar.info("التطبيق جاهز ويعمل بكافة مكتباته بانتظام.")
-
 # ==========================================
-# 3. منطق البحث الذكي (يبحث في أي شيء، ولو 'الأهلي' يوجهه للمصري)
+# 3. قسم الشات الذكي (Gemini)
 # ==========================================
-if app_mode == "🌐 البحث الذكي (شامل + تخصيص الأهلي)":
-    st.title("🌐 ميمو - محرك البحث الذكي")
-    st.write("اسأل عن أي سؤال في العالم، وإذا كتبت 'الأهلي' وحدها فسأبحث لك عن **النادي الأهلي المصري** حصرياً!")
+if app_mode == "💬 الشات الذكي (اسأل عن أي شيء)":
+    st.title("💬 ميمو - الشات الذكي (محدث 2026)")
+    st.write("اسألني عن أي سؤال في راسك (رياضة، برمجة، علوم، تاريخ...) وسأجيبك فوراً بدقة عالية.")
     st.markdown("---")
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    if not api_ready:
+        st.warning("⚠️ تنبيه: يرجى إضافة مفتاح `GEMINI_API_KEY` في قسم Secrets في إعدادات تطبيقك على Streamlit Cloud ليعمل الشات بنجاح.")
+    
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
 
-    for message in st.session_state.messages:
+    for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    def get_wikipedia_summary(query):
-        try:
-            search_term = query
-            
-            # الذكاء هنا: لو المستخدم كتب كلمة "الأهلي" فقط بدون تحديد، نوجهه للمصري تلقائياً
-            # أما لو سأل عن أي شيء آخر (تاريخ، عواصم، علوم...) فسيترك البحث طبيعياً ليبحث عما طلبته
-            if query.strip() == "الأهلي" or query.strip() == "النادي الأهلي":
-                search_term = "النادي الأهلي المصري"
-            elif "الأهلي" in query and "المصري" not in query and "السعودي" not in query and "الأردني" not in query:
-                search_term = "النادي الأهلي المصري"
+    if user_prompt := st.chat_input("اكتب سؤالك هنا..."):
+        if not api_ready:
+            st.error("لا يمكن إرسال الرسالة لعدم ضبط مفتاح الـ API.")
+        else:
+            st.session_state.chat_history.append({"role": "user", "content": user_prompt})
+            with st.chat_message("user"):
+                st.markdown(user_prompt)
 
-            encoded_query = urllib.parse.quote(search_term)
-            url = f"https://ar.wikipedia.org/w/api.php?action=query&list=search&srsearch={encoded_query}&format=json"
-            
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req) as response:
-                data = json.loads(response.read().decode('utf-8'))
-                search_results = data.get('query', {}).get('search', [])
-                
-                if search_results:
-                    best_match = search_results[0]
-                    title = best_match.get('title', '')
-                    snippet = best_match.get('snippet', '').replace('<span class="searchmatch">', '').replace('</span>', '')
-                    return f"### 📌 نتيجة البحث: {title}\n\n{snippet}...\n\n*(المعلومات مقدمة من موسوعة ويكيبيديا)*"
-                else:
-                    return "عذراً، لم أجد معلومات دقيقة حول هذا الموضوع."
-        except Exception as e:
-            return f"حدث خطأ في الاتصال: {e}"
-
-    if prompt := st.chat_input("اكتب سؤالك هنا (مثلاً: الأهلي، أو عاصمة فرنسا، أو تاريخ الفراعنة)..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        with st.chat_message("assistant"):
-            with st.spinner("جاري البحث..."):
-                response = get_wikipedia_summary(prompt)
-                st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            with st.chat_message("assistant"):
+                with st.spinner("جاري التفكير والإجابة..."):
+                    try:
+                        response = model.generate_content(user_prompt)
+                        bot_reply = response.text
+                        
+                        st.markdown(bot_reply)
+                        st.session_state.chat_history.append({"role": "assistant", "content": bot_reply})
+                    except Exception as e:
+                        st.error(f"حدث خطأ أثناء الاتصال: {e}")
 
 # ==========================================
-# 4. منطق توليد الصور بالذكاء الاصطناعي
+# 4. قسم توليد الصور بالذكاء الاصطناعي
 # ==========================================
 elif app_mode == "🎨 توليد الصور بالذكاء الاصطناعي":
-    st.title("🎨 ميمو - استوديو توليد الصور")
-    st.write("اكتب وصفاً دقيقاً للصورة التي تتخيلها، وسيقوم ميمو برسمها لك!")
+    st.title("🎨 ميمو - استوديو توليد الصور 2026")
+    st.write("اكتب وصفاً لأي صورة تتخيلها وسيقوم ميمو برسمها لك حالاً!")
     st.markdown("---")
 
-    ai_prompt = st.text_input("اكتب وصف الصورة هنا (بالعربية أو الإنجليزية):", placeholder="مثال: نسر الأهلي يحلق فوق ملعب القاهرة")
+    image_prompt = st.text_input("صف الصورة التي تريدها:", placeholder="مثال: نسر ضخم يطير فوق الأهرامات بتصميم سينمائي")
 
-    if st.button("🎨 ابدأ التوليد"):
-        if ai_prompt:
-            with st.spinner("جاري توليد الصورة بالذكاء الاصطناعي... قد يستغرق الأمر لحظات..."):
+    if st.button("توليد الصورة"):
+        if image_prompt:
+            with st.spinner("جاري رسم الصورة بالذكاء الاصطناعي..."):
                 try:
-                    encoded_prompt = urllib.parse.quote(ai_prompt)
+                    encoded_prompt = urllib.parse.quote(image_prompt)
                     image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
                     
-                    with urllib.request.urlopen(image_url) as response:
-                        image_data = response.read()
-                        img = Image.open(io.BytesIO(image_data))
-                        
-                        st.success("تم توليد الصورة بنجاح!")
-                        st.image(img, caption=f"الصورة المولدة: {ai_prompt}", use_column_width=True)
-                        
-                        st.markdown(f'<a href="{image_url}" download="memo_generated_image.jpg" style="text-decoration:none;"><button style="background-color:#4CAF50; color:white; padding: 10px 20px; border:none; border-radius:5px; cursor:pointer;">📥 تحميل الصورة</button></a>', unsafe_allow_html=True)
-
+                    st.success("تم توليد الصورة بنجاح!")
+                    st.image(image_url, caption=image_prompt, use_column_width=True)
                 except Exception as e:
-                    st.error(f"حدث خطأ أثناء توليد الصورة: {e}")
+                    st.error(f"خطأ في توليد الصورة: {e}")
         else:
-            st.warning("الرجاء كتابة وصف للصورة أولاً.")
+            st.warning("من فضلك اكتب وصفاً أولاً.")
 
 # ==========================================
-# 5. منطق محرر الصور والفلاتر
+# 5. قسم محرر الصور والفلاتر
 # ==========================================
 elif app_mode == "✏️ محرر الصور والفلاتر":
     st.title("✏️ ميمو - محرر الصور المتقدم")
-    st.write("ارفع صورتك الخاصة، وقم بتعديل الإضاءة، التباين، وإضافة الفلاتر.")
+    st.write("ارفع صورتك وعدل إضاءتها وفلاترها بلمسة واحدة.")
     st.markdown("---")
 
-    uploaded_file = st.file_uploader("اختر صورة من جهازك...", type=["jpg", "jpeg", "png"])
+    file = st.file_uploader("اختر صورة...", type=["jpg", "png", "jpeg"])
+    if file:
+        img = Image.open(file)
+        st.image(img, caption="الصورة الأصلية", use_column_width=True)
 
-    if uploaded_file is not None:
-        try:
-            original_img = Image.open(uploaded_file)
-            
-            with st.expander("عرض الصورة الأصلية", expanded=False):
-                st.image(original_img, caption="الصورة الأصلية", use_column_width=True)
+        st.sidebar.markdown("### تحكم بالصورة")
+        brightness = st.sidebar.slider("الإضاءة", 0.1, 3.0, 1.0)
+        contrast = st.sidebar.slider("التباين", 0.1, 3.0, 1.0)
 
-            st.sidebar.markdown("### 🎛️ أدوات التحرير")
-            
-            brightness = st.sidebar.slider("درجة الإضاءة (Brightness)", 0.0, 3.0, 1.0, 0.1)
-            contrast = st.sidebar.slider("التباين (Contrast)", 0.0, 3.0, 1.0, 0.1)
-            sharpness = st.sidebar.slider("حدة الصورة (Sharpness)", 0.0, 3.0, 1.0, 0.1)
-            
-            apply_blur = st.sidebar.checkbox("تطبيق تأثير ضبابي (Blur)")
-            apply_bw = st.sidebar.checkbox("تحويل إلى أبيض وأسود (Grayscale)")
+        edited = ImageEnhance.Brightness(img).enhance(brightness)
+        edited = ImageEnhance.Contrast(edited).enhance(contrast)
 
-            enhancer_bright = ImageEnhance.Brightness(original_img)
-            img_edited = enhancer_bright.enhance(brightness)
-            
-            enhancer_contrast = ImageEnhance.Contrast(img_edited)
-            img_edited = enhancer_contrast.enhance(contrast)
-            
-            enhancer_sharp = ImageEnhance.Sharpness(img_edited)
-            img_edited = enhancer_sharp.enhance(sharpness)
-
-            if apply_blur:
-                img_edited = img_edited.filter(ImageFilter.BLUR)
-            
-            if apply_bw:
-                img_edited = img_edited.convert("L")
-
-            st.subheader("✨ الصورة بعد التعديل:")
-            st.image(img_edited, caption="صورتك المعدلة بواسطة ميمو", use_column_width=True)
-
-            buf = io.BytesIO()
-            img_edited.save(buf, format="PNG")
-            byte_im = buf.getvalue()
-            
-            st.download_button(
-                label="💾 تحميل الصورة النهائية المعدلة",
-                data=byte_im,
-                file_name="memo_edited_image.png",
-                mime="image/png"
-            )
-
-        except Exception as e:
-            st.error(f"حدث خطأ أثناء معالجة الصورة: {e}")
-    else:
-        st.info("الرجاء رفع صورة للبدء في التحرير.")
-
-# ==========================================
-# 6. التذييل (Footer)
-# ==========================================
-st.markdown("---")
-st.caption("تطبيق ميمو الشامل (Memo AI Studio) - جميع الحقوق محفوظة © 2024")
+        st.subheader("الصورة بعد التعديل:")
+        st.image(edited, caption="الصورة النهائية", use_column_width=True)
