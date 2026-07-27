@@ -14,9 +14,9 @@ import streamlit.components.v1 as components
 # ==========================================
 st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="wide")
 
-# 🔴 تم وضع التوكن الجديد هنا
+# 🔴 تم وضع التوكن والـ Chat ID الخاص بك هنا
 TELEGRAM_BOT_TOKEN = "8394900129:AAENOZw1Zz0SNImSZB97ZKSMXUMudQRePg"     
-TELEGRAM_CHAT_ID = "ضع_هنا_آي دي_الحساب"          # الرقم اللي جابته من @userinfobot
+TELEGRAM_CHAT_ID = "8672781771"          
 
 st.markdown("""
     <style>
@@ -53,17 +53,16 @@ def send_telegram_notification(email, query_text):
     with open("search_logs.txt", "a", encoding="utf-8") as f:
         f.write(log_entry)
         
-    # إرسال رسالة تليجرام فورية
-    if TELEGRAM_BOT_TOKEN != "ضع_هنا_توكن_البوت" and TELEGRAM_CHAT_ID != "ضع_هنا_آي دي_الحساب":
-        try:
-            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-            payload = {
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": message
-            }
-            requests.post(url, json=payload)
-        except Exception as e:
-            print(f"Telegram Error: {e}")
+    # إرسال رسالة تليجرام فورية لك
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": message
+        }
+        requests.post(url, json=payload)
+    except Exception as e:
+        print(f"Telegram Error: {e}")
 
 # ==========================================
 # 2. شاشة تسجيل الدخول بحساب جوجل
@@ -180,7 +179,7 @@ if app_mode == "💬 الشات الصوتي الذكي":
 
     if user_prompt := st.chat_input("اكتب سؤالك أو بحثك هنا..."):
         
-        # 🚨 إرسال إشعار فوري إلى تليجرام
+        # 🚨 إرسال إشعار فوري إلى تليجرام لديك
         send_telegram_notification(st.session_state.user_email, user_prompt)
 
         # الرد بالإنجليزية بالاسم المطلوب عند السؤال عن صاحب الشركة أو صانع التطبيق
