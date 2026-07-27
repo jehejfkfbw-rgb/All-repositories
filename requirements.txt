@@ -1,5 +1,6 @@
-g4f
 streamlit
+requests
 pillow
 gTTS
 pytz
+google-generativeai
