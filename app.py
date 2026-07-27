@@ -3,8 +3,8 @@ import smtplib
 from email.message import EmailMessage
 import streamlit as st
 
-# بيانات البريد المرسل وتطبيق جوجل (كلمة المرور الـ 16 حرف اللي طلعناها)
-SENDER_EMAIL = "your_email@gmail.com"  # اكتب بريدك هنا
+# بيانات البريد المرسل وتطبيق جوجل (كلمة المرور الـ 16 حرف بتاعتك)
+SENDER_EMAIL = "ajakdjrjej@gmail.com"  # الإيميل بتاعك اللي انشأت عليه الكلمة
 SENDER_PASSWORD = "eelaangubuzhdwmj"
 
 # دالة إرسال رمز التحقق
