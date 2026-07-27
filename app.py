@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from groq import Groq
 from PIL import Image, ImageEnhance
 import urllib.parse
 from datetime import datetime
@@ -15,10 +15,9 @@ st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="w
 TELEGRAM_BOT_TOKEN = "8394900129:AAENOZw1Zz0SNImSZB97ZKSMXUMudQRePg"     
 TELEGRAM_CHAT_ID = "8672781771"          
 
-# مفتاح جوجل جيمناي (حط مفتاحك هنا)
-GEMINI_API_KEY = "حط_مفتاح_جيمناي_هنا"
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
+# إعداد مفتاح Groq الذكي (حط مفتاح الـ Groq API هنا، بتب’ مجاناً من موقعهم)
+GROQ_API_KEY = "حط_مفتاح_groq_هنا"
+client = Groq(api_key=GROQ_API_KEY)
 
 st.markdown("""
     <style>
@@ -57,11 +56,10 @@ def send_telegram_notification(email, action_text):
     except Exception as e:
         print(f"Telegram Error: {e}")
 
-# بريد افتراضي للاستخدام المباشر
 current_user_email = "Mohamed Adel (عادل أحمد)"
 
 # ==========================================
-# 2. واجهة التطبيق الرئيسية (مباشرة)
+# 2. واجهة التطبيق الرئيسية
 # ==========================================
 st.sidebar.title("🤖 ميمو AI - InnovaSoft")
 st.sidebar.success(f"مرحباً: {current_user_email}")
@@ -79,14 +77,13 @@ menu_options = [
 app_mode = st.sidebar.radio("اختر القسم:", menu_options)
 
 if app_mode == "💬 الشات الذكي":
-    st.title("💬 ميمو - الشات الذكي السريع")
-    st.write(f"أهلاً بك يا {current_user_email}، اسأل عن أي شيء وسأرد عليك فوراً!")
+    st.title("💬 ميمو - الشات الذكي السريع (Groq)")
+    st.write(f"أهلاً بك يا {current_user_email}، اسأل عن أي شيء وسأرد عليك فوراً بالإنترنت وبأعلى سرعة!")
     st.markdown("---")
 
-    # تهيئة الرسائل بطريقة قائمة بسيطة ومستقرة تمنع التعليق
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "assistant", "content": "أهلاً يا فنان! أنا جاهز، اكتب سؤالك وهيجيلك الرد في ثانية."}
+            {"role": "assistant", "content": "أهلاً يا فنان! أنا جاهز بمكتبة Groq السريعة، اسأل اللي يعجبك والدنيا هتمشي صواريخ."}
         ]
 
     for message in st.session_state.messages:
@@ -101,13 +98,16 @@ if app_mode == "💬 الشات الذكي":
             st.markdown(user_prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("ميمو بيكتب الرد..."):
+            with st.spinner("ميمو بيبحث وبيرد بالسرعة القصوى..."):
                 try:
-                    # استجابة مباشرة سريعة وآمنة من نموذج جيمناي
-                    response = model.generate_content(user_prompt)
-                    bot_reply = response.text
+                    # استخدام نموذج Groq السارق للوقت (llama3) للرد الفوري
+                    chat_completion = client.chat.completions.create(
+                        model="llama3-70b-8192",
+                        messages=[{"role": "user", "content": user_prompt}]
+                    )
+                    bot_reply = chat_completion.choices[0].message.content
                 except Exception as e:
-                    bot_reply = f"عذراً حدث خطأ، تأكد من مفتاح الجيمناي (API Key): {e}"
+                    bot_reply = f"عذراً يا فنان، تأكد من صحة مفتاح Groq API في الكود: {e}"
                 
                 st.markdown(bot_reply)
         
