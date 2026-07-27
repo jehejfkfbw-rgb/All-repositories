@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 from PIL import Image, ImageEnhance, ImageFilter
 import urllib.parse
 import io
@@ -32,9 +32,8 @@ part3 = "hvY6e1mFrV-kQiWwigCRWw72hQ"
 API_KEY = part1 + part2 + part3
 
 try:
-    genai.configure(api_key=API_KEY)
-    # استخدام الموديل الثابت والمستقر
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # استخدام العميل الحديث والمستقر
+    client = genai.Client(api_key=API_KEY)
     api_ready = True
 except Exception:
     api_ready = False
@@ -75,7 +74,11 @@ if app_mode == "💬 الشات الذكي (اسأل عن أي شيء)":
         with st.chat_message("assistant"):
             with st.spinner("جاري التفكير والإجابة..."):
                 try:
-                    response = model.generate_content(user_prompt)
+                    # استدعاء الموديل الحديث gemini-2.0-flash
+                    response = client.models.generate_content(
+                        model='gemini-2.0-flash',
+                        contents=user_prompt,
+                    )
                     bot_reply = response.text
                     
                     st.markdown(bot_reply)
