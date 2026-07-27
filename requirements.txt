@@ -1,3 +1,3 @@
-google-genai
+g4f
 streamlit
 pillow
