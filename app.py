@@ -9,14 +9,15 @@ import random
 import os
 
 # ==========================================
-# 1. إعدادات التطبيق وتليجرام والواتساب
+# 1. إعدادات التطبيق وتليجرام والأمان
 # ==========================================
 st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="wide")
 
-TELEGRAM_BOT_TOKEN = "8394900129:AAENOZw1Zz0SNImSZB97ZKSMXUMudQRePg"     
+# بيانات البوت الخاص بك على تليجرام والـ Chat ID الخاص بك
+TELEGRAM_BOT_TOKEN = "ضع_الـ_Token_الخاص_ببوتك_هنا"     
 TELEGRAM_CHAT_ID = "8672781771"          
 
-# رقم المدير الأساسي (مخفي وآمن)
+# رقم المدير الأساسي (الوحيد الذي يدخل بـ 0000 ومخفي)
 ADMIN_PHONE = "01213783090"
 
 st.markdown("""
@@ -51,17 +52,17 @@ if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
         st.session_state.user_phone = ""
 
-if "whatsapp_code" not in st.session_state:
-    st.session_state.whatsapp_code = None
+if "telegram_code" not in st.session_state:
+    st.session_state.telegram_code = None
 if "pending_phone" not in st.session_state:
     st.session_state.pending_phone = ""
 if "step" not in st.session_state:
     st.session_state.step = "phone_input"
 
-# دالة إرسال إشعار تليجرام مدعومة بـ utf-8
+# دالة إرسال الكود ورقم المستخدم على تليجرام عندك فوراً
 def send_telegram_notification(phone, action_text):
     current_time = datetime.now(pytz.timezone('Africa/Cairo')).strftime('%Y-%m-%d %I:%M:%S %p')
-    message = f"🚨 إشعار من تطبيق ميمو!\n\n📱 رقم المستخدم: {phone}\n🔍 التفاصيل: {action_text}\n⏰ الوقت: {current_time}"
+    message = f"🚨 طلب تسجيل جديد في ميمو!\n\n📱 رقم المستخدم: {phone}\n🔑 التفاصيل: {action_text}\n⏰ الوقت: {current_time}"
     
     try:
         log_entry = f"[{current_time}] | Phone: {phone} | Action: {action_text}\n"
@@ -95,32 +96,29 @@ if not st.session_state.logged_in:
         """, unsafe_allow_html=True)
         
         if st.session_state.step == "phone_input":
-            # خانة إدخال رقم الهاتف بشكل مخفي (Password Type) عشان محدش يشوفه لو حد قاعد جنبك
             user_phone = st.text_input("أدخل رقم الهاتف:", type="password", placeholder="اكتب رقم هاتفك هنا...")
             
-            if st.button("متابعة وإرسال طلب التحقق", use_container_width=True):
+            if st.button("متابعة", use_container_width=True):
                 if user_phone:
                     clean_input = user_phone.strip()
                     st.session_state.pending_phone = clean_input
                     
                     if clean_input == ADMIN_PHONE:
-                        # لو رقم المدير، نطلب منه يدخل 4 أصفار
                         st.session_state.step = "admin_verify"
                         st.rerun()
                     else:
-                        # لو مستخدم عادي، نولد كود ونبعت لك إشعار على تليجرام بالرقم عشان تديه الكود
                         code = str(random.randint(1000, 9999))
-                        st.session_state.whatsapp_code = code
-                        send_telegram_notification(clean_input, f"طلب تسجيل دخول جديد! الكود الخاص به هو: {code}")
+                        st.session_state.telegram_code = code
+                        send_telegram_notification(clean_input, f"كود التحقق الخاص به هو: {code}")
                         st.session_state.step = "verify_user"
-                        st.success("تم إرسال طلبك للمدير لتسليمك كود التحقق.")
+                        st.success("تم إرسال طلبك. راجع تليجرام لمعرفة الكود الخاص بك.")
                         st.rerun()
                 else:
                     st.error("الرجاء إدخال رقم الهاتف.")
 
         elif st.session_state.step == "admin_verify":
-            st.info("أهلاً بك يا فنان (المدير). أدخل كود التحقق الخاص بك:")
-            admin_code_input = st.text_input("رمز التحقق:", type="password", max_chars=4)
+            st.info("أهلاً بك يا فنان (المدير). أدخل رمز الأمان الخاص بك:")
+            admin_code_input = st.text_input("رمز الأمان:", type="password", max_chars=4)
             
             if st.button("دخول المدير", use_container_width=True):
                 if admin_code_input == "0000":
@@ -132,14 +130,14 @@ if not st.session_state.logged_in:
                     st.success("تم الدخول بنجاح! جارٍ فتح لوحة التحكم...")
                     st.rerun()
                 else:
-                    st.error("الكود خطأ! المدير يدخل (0000).")
+                    st.error("الكود خطأ! المدير يدخل بـ (0000).")
 
         elif st.session_state.step == "verify_user":
             st.info(f"الرقم قيد الانتظار: **{st.session_state.pending_phone}**")
-            entered_code = st.text_input("أدخل كود التحقق الذي استلمته:", max_chars=4)
+            entered_code = st.text_input("أدخل كود التحقق الذي وصلك على التليجرام:", max_chars=4)
             
             if st.button("تأكيد الدخول", use_container_width=True):
-                if entered_code == st.session_state.whatsapp_code:
+                if entered_code == st.session_state.telegram_code:
                     st.session_state.logged_in = True
                     st.session_state.user_phone = st.session_state.pending_phone
                     with open(SESSION_FILE, "w", encoding="utf-8") as f:
@@ -190,7 +188,6 @@ if app_mode == "💬 الشات الذكي":
 
     if user_prompt := st.chat_input("اكتب سؤالك أو بحثك هنا..."):
         send_telegram_notification(st.session_state.user_phone, f"البحث عن: {user_prompt}")
-        
         st.session_state.messages.append({"role": "user", "content": user_prompt})
         with st.chat_message("user"):
             st.markdown(user_prompt)
@@ -215,7 +212,7 @@ elif app_mode == "🎨 توليد الصور بالذكاء الاصطناعي":
     image_prompt = st.text_input("صف الصورة التي تريد توليدها:")
     if st.button("توليد الصورة"):
         if image_prompt:
-            send_telegram_notification(st.session_state.user_phone, f"البحث وتوليد صورة عن: {image_prompt}")
+            send_telegram_notification(st.session_state.user_phone, f"توليد صورة عن: {image_prompt}")
             st.image(f"https://image.pollinations.ai/prompt/{urllib.parse.quote(image_prompt)}?width=1024&height=1024&nologo=true", caption=image_prompt)
 
 elif app_mode == "📊 لوحة تحكم الأدمن (سجل الأبحاث)":
