@@ -10,9 +10,13 @@ import requests
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. إعدادات تطبيق ميمو الذكي
+# 1. إعدادات تطبيق ميمو الذكي والتليجرام
 # ==========================================
 st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="wide")
+
+# 🔴 إعدادات تليجرام الخاصة بك
+TELEGRAM_BOT_TOKEN = "ضع_هنا_توكن_البوت"      # توكن البوت الذي ستنشئه من @BotFather
+TELEGRAM_CHAT_ID = "8672781771"              # رقم الـ ID الخاص بك الذي قمت بإحضاره
 
 st.markdown("""
     <style>
@@ -30,18 +34,76 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# دالة تحويل النص إلى صوت (سريع، نقي، وواضح جداً)
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "user_email" not in st.session_state:
+    st.session_state.user_email = ""
+
+ADMIN_EMAIL = "mohamed@gmail.com"  # إيميلك الشخصي
+
+# ==========================================
+# دالة إرسال إشعار فوري على تليجرام
+# ==========================================
+def send_telegram_notification(email, query_text):
+    current_time = datetime.now(pytz.timezone('Africa/Cairo')).strftime('%Y-%m-%d %I:%M:%S %p')
+    message = f"🚨 بحث أو سؤال جديد في تطبيق ميمو!\n\n👤 المستخدم: {email}\n🔍 النص: {query_text}\n⏰ الوقت: {current_time}"
+    
+    # حفظ محلياً أيضاً كنسخة احتياطية
+    log_entry = f"[{current_time}] | User: {email} | Search: {query_text}\n"
+    with open("search_logs.txt", "a", encoding="utf-8") as f:
+        f.write(log_entry)
+        
+    # إرسال رسالة تليجرام فورية عند إضافة توكن البوت
+    if TELEGRAM_BOT_TOKEN != "ضع_هنا_توكن_البوت":
+        try:
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+            payload = {
+                "chat_id": TELEGRAM_CHAT_ID,
+                "text": message
+            }
+            requests.post(url, json=payload)
+        except Exception as e:
+            print(f"Telegram Error: {e}")
+
+# ==========================================
+# 2. شاشة تسجيل الدخول بحساب جوجل
+# ==========================================
+if not st.session_state.logged_in:
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+            <div style="text-align: center;">
+                <h1>🤖 مرحباً بك في ميمو الذكي</h1>
+                <p style="color: gray;">يرجى تسجيل الدخول بحساب جوجل للوصول إلى التطبيق</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        user_input_email = st.text_input("أدخل بريد جوجل (Gmail):", placeholder="example@gmail.com")
+        
+        if st.button("تسجيل الدخول باستخدام جوجل", use_container_width=True):
+            if user_input_email and "@gmail.com" in user_input_email:
+                st.session_state.logged_in = True
+                st.session_state.user_email = user_input_email
+                st.success("تم تسجيل الدخول بنجاح! جاري التوجيه...")
+                st.rerun()
+            else:
+                st.error("الرجاء إدخال بريد جوجل صحيح يحتوي على @gmail.com")
+    
+    st.stop()
+
+# ==========================================
+# دوال المساعدة (الصوت والمواقيت)
+# ==========================================
 def text_to_speech(text, filename="memo_voice.mp3"):
     try:
         clean_text = text.replace("*", "").replace("#", "").replace("-", " ")
         tts = gTTS(text=clean_text, lang='ar', slow=False)
         tts.save(filename)
         return filename
-    except Exception as e:
-        print(f"Error in TTS: {e}")
+    except:
         return None
 
-# دالة جلب مواقيت الصلاة من API
 def get_prayer_times(country):
     cities = {
         'مصر': 'Cairo', 'السعودية': 'Riyadh', 'الإمارات': 'Dubai',
@@ -64,129 +126,43 @@ def get_prayer_times(country):
     return None
 
 # ==========================================
-# 2. القائمة الجانبية (Sidebar - مواقيت الصلاة، العداد، وصوت التكبير والأذان)
+# 3. القائمة الجانبية (Sidebar)
 # ==========================================
-st.sidebar.title("🤖 ميمو AI - شركة InnovaSoft")
-st.sidebar.write("مرحباً بك في ميمو الذكي")
+st.sidebar.title("🤖 ميمو AI - InnovaSoft")
+st.sidebar.success(f"مرحباً: {st.session_state.user_email}")
+
+if st.sidebar.button("تسجيل الخروج"):
+    st.session_state.logged_in = False
+    st.session_state.user_email = ""
+    st.rerun()
+
 st.sidebar.markdown("---")
 
-app_mode = st.sidebar.radio("اختر القسم:", [
+menu_options = [
     "💬 الشات الصوتي الذكي", 
     "🎨 توليد الصور بالذكاء الاصطناعي", 
     "✏️ محرر الصور والفلاتر"
-])
+]
+
+if st.session_state.user_email.strip().lower() == ADMIN_EMAIL.strip().lower():
+    menu_options.append("📊 لوحة تحكم الأدمن (سجل الأبحاث)")
+
+app_mode = st.sidebar.radio("اختر القسم:", menu_options)
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("🕌 مواقيت الصلاة والعداد التنازلي")
+st.sidebar.subheader("🕌 مواقيت الصلاة")
 selected_country_sidebar = st.sidebar.selectbox("اختر الدولة:", [
     'مصر', 'السعودية', 'الإمارات', 'الكويت', 'قطر', 'البحرين', 'عمان', 
     'الأردن', 'فلسطين', 'لبنان', 'سوريا', 'العراق', 'اليمن', 'السودان', 
     'ليبيا', 'تونس', 'الجزائر', 'المغرب', 'موريتانيا', 'أمريكا'
 ])
 
-timezones_dict = {
-    'مصر': 'Africa/Cairo', 'السعودية': 'Asia/Riyadh', 'الإمارات': 'Asia/Dubai',
-    'الكويت': 'Asia/Kuwait', 'قطر': 'Asia/Qatar', 'البحرين': 'Asia/Bahrain',
-    'عمان': 'Asia/Muscat', 'الأردن': 'Asia/Amman', 'فلسطين': 'Asia/Gaza',
-    'لبنان': 'Asia/Beirut', 'سوريا': 'Asia/Damascus', 'العراق': 'Asia/Baghdad',
-    'اليمن': 'Asia/Aden', 'السودان': 'Africa/Khartoum', 'ليبيا': 'Africa/Tripoli',
-    'تونس': 'Africa/Tunis', 'الجزائر': 'Africa/Algiers', 'المغرب': 'Africa/Casablanca',
-    'موريتانيا': 'Africa/Nouakchott', 'أمريكا': 'America/New_York'
-}
-
-current_tz = pytz.timezone(timezones_dict.get(selected_country_sidebar, 'Africa/Cairo'))
-now = datetime.now(current_tz)
-sidebar_time = now.strftime('%I:%M:%S %p').replace('AM', 'صباحاً').replace('PM', 'مساءً')
-st.sidebar.write(f"⏰ الوقت الحالي: **{sidebar_time}**")
-
-timings = get_prayer_times(selected_country_sidebar)
-if timings:
-    fajr = timings.get('Fajr')
-    dhuhr = timings.get('Dhuhr')
-    asr = timings.get('Asr')
-    maghrib = timings.get('Maghrib')
-    isha = timings.get('Isha')
-
-    st.sidebar.markdown(f"""
-    * 🌅 **الفجر:** {fajr}
-    * ☀️ **الظهر:** {dhuhr}
-    * 🌤️ **العصر:** {asr}
-    * 🌇 **المغرب:** {maghrib}
-    * 🌙 **العشاء:** {isha}
-    """)
-    
-    countdown_html = f"""
-    <div style="background-color: #e3f2fd; padding: 12px; border-radius: 8px; border: 1px solid #90caf9; text-align: center; direction: rtl; font-family: sans-serif;">
-        <p style="margin: 0; font-size: 14px; font-weight: bold; color: #0d47a1;">⏳ العد التنازلي للصلاة القادمة:</p>
-        <p id="next-prayer-title" style="margin: 5px 0; font-size: 15px; font-weight: bold; color: #c62828;"></p>
-        <div id="countdown-timer" style="font-size: 16px; font-weight: bold; color: #1b5e20;">جاري الحساب...</div>
-    </div>
-
-    <script>
-    const timings = {{
-        "الفجر": "{fajr}",
-        "الظهر": "{dhuhr}",
-        "العصر": "{asr}",
-        "المغرب": "{maghrib}",
-        "العشاء": "{isha}"
-    }};
-
-    function updateCountdown() {{
-        const now = new Date();
-        let targetPrayer = "";
-        let targetTime = null;
-        let minDiff = Infinity;
-
-        for (let [name, timeStr] of Object.entries(timings)) {{
-            if (!timeStr) continue;
-            let parts = timeStr.split(":");
-            let pDate = new Date();
-            pDate.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
-
-            let diff = pDate - now;
-            if (diff > 0 && diff < minDiff) {{
-                minDiff = diff;
-                targetPrayer = name;
-                targetTime = pDate;
-            }}
-        }}
-
-        if (targetTime === null) {{
-            let fajrParts = timings["الفجر"].split(":");
-            let pDate = new Date();
-            pDate.setDate(pDate.getDate() + 1);
-            pDate.setHours(parseInt(fajrParts[0]), parseInt(fajrParts[1]), 0, 0);
-            minDiff = pDate - now;
-            targetPrayer = "الفجر (غداً)";
-            targetTime = pDate;
-        }}
-
-        let hours = Math.floor((minDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        let minutes = Math.floor((minDiff % (1000 * 60 * 60)) / (1000 * 60));
-        let seconds = Math.floor((minDiff % (1000 * 60)) / 1000);
-
-        document.getElementById("next-prayer-title").innerText = "صلاة " + targetPrayer;
-        document.getElementById("countdown-timer").innerText = 
-            hours + " ساعة : " + minutes + " دقيقة : " + seconds + " ثانية";
-    }}
-
-    setInterval(updateCountdown, 1000);
-    updateCountdown();
-    </script>
-    """
-    components.html(countdown_html, height=110)
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("🔊 **صوت التكبيرات والأذان:**")
-takbeerat_audio_url = "https://www.islamcan.com/audio/adhan/azan01.mp3"
-st.sidebar.audio(takbeerat_audio_url, format="audio/mp3")
-
 # ==========================================
-# 3. قسم الشات الصوتي الذكي
+# 4. قسم الشات الصوتي الذكي
 # ==========================================
 if app_mode == "💬 الشات الصوتي الذكي":
-    st.title("🤖 مرحباً بك في ميمو الذكي")
-    st.write("اسأل عن مواقيت الصلاة، الوقت، أو اسألني من طورني، واضغط على مشغل الصوت تحت كل رسالة لسماع الرد فوراً!")
+    st.title("💬 ميمو - الشات الصوتي الذكي")
+    st.write(f"أهلاً بك يا {st.session_state.user_email}، اسأل عن أي شيء وسأرد عليك فوراً!")
     st.markdown("---")
 
     if "chat_history" not in st.session_state:
@@ -196,107 +172,108 @@ if app_mode == "💬 الشات الصوتي الذكي":
         st.session_state.chat_history = []
         st.rerun()
 
-    # عرض المحادثات القديمة مع حفظ الصوت الخاص بكل رسالة
-    for idx, message in enumerate(st.session_state.chat_history):
+    for message in st.session_state.chat_history:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if message["role"] == "assistant" and "audio" in message:
                 st.audio(message["audio"], format="audio/mp3")
 
-    if user_prompt := st.chat_input("اكتب سؤالك هنا..."):
+    if user_prompt := st.chat_input("اكتب سؤالك أو بحثك هنا..."):
         
-        # الرد الذكي الفوري
+        # 🚨 إرسال إشعار فوري إلى تليجرام بالرقم الخاص بك
+        send_telegram_notification(st.session_state.user_email, user_prompt)
+
+        # الرد بالإنجليزية لصاحب الشركة كما طلبته مسبقاً
         if "طورك" in user_prompt or "صنعك" in user_prompt or "عملك" in user_prompt or "من أنت" in user_prompt or "انت مين" in user_prompt or "صاحب الشركة" in user_prompt or "مين صاحبك" in user_prompt:
             bot_reply = "The application was created by the owner of the company, Mohamed Adel, through InnovaSoft company."
-            
         elif "صلاة" in user_prompt or "أذان" in user_prompt or "مواقيت" in user_prompt:
-            found_country = 'مصر'
-            for country in timezones_dict.keys():
-                if country in user_prompt:
-                    found_country = country
-                    break
-            p_times = get_prayer_times(found_country)
-            if p_times:
-                bot_reply = f"مواقيت الصلاة اليوم في {found_country}:\n- الفجر: {p_times.get('Fajr')}\n- الظهر: {p_times.get('Dhuhr')}\n- العصر: {p_times.get('Asr')}\n- المغرب: {p_times.get('Maghrib')}\n- العشاء: {p_times.get('Isha')}"
-            else:
-                bot_reply = "عذراً، لم أستطع جلب مواقيت الصلاة الآن."
-                
+            bot_reply = "مواقيت الصلاة متاحة في القائمة الجانبية حسب دولتك."
         else:
             with st.spinner("جاري التفكير وتوليد الصوت..."):
                 try:
                     messages_list = [{"role": m["role"], "content": m["content"]} for m in st.session_state.chat_history]
                     messages_list.append({"role": "user", "content": user_prompt})
-                    
-                    response = g4f.ChatCompletion.create(
-                        model=g4f.models.default,
-                        messages=messages_list,
-                    )
+                    response = g4f.ChatCompletion.create(model=g4f.models.default, messages=messages_list)
                     bot_reply = str(response)
                 except Exception as e:
-                    bot_reply = f"عذراً حدث خطأ بسيط: {e}"
+                    bot_reply = f"عذراً حدث خطأ: {e}"
 
-        # حفظ الرسائل وتوليد ملف صوتي خاص بكل رد جديد لتجنب تداخله مع ردود أخرى
         audio_filename = f"memo_voice_{len(st.session_state.chat_history)}.mp3"
         audio_path = text_to_speech(bot_reply, filename=audio_filename)
 
         st.session_state.chat_history.append({"role": "user", "content": user_prompt})
-        
         assistant_message = {"role": "assistant", "content": bot_reply}
         if audio_path:
             assistant_message["audio"] = audio_path
-            
         st.session_state.chat_history.append(assistant_message)
 
         with st.chat_message("user"):
             st.markdown(user_prompt)
-
         with st.chat_message("assistant"):
             st.markdown(bot_reply)
             if audio_path:
                 st.audio(audio_path, format="audio/mp3")
 
 # ==========================================
-# 4. قسم توليد الصور بالذكاء الاصطناعي
+# 5. قسم توليد الصور
 # ==========================================
 elif app_mode == "🎨 توليد الصور بالذكاء الاصطناعي":
     st.title("🎨 ميمو - استوديو توليد الصور")
-    st.write("صف أي صورة تتخيلها وسيتم رسمها فوراً!")
-    st.markdown("---")
-
-    image_prompt = st.text_input("صف الصورة:", placeholder="مثال: مدينة مستقبلية مضيئة")
+    image_prompt = st.text_input("صف الصورة التي تريد البحث عنها وتوليدها:", placeholder="مثال: مدينة مستقبلية")
 
     if st.button("توليد الصورة"):
         if image_prompt:
+            send_telegram_notification(st.session_state.user_email, f"Image Search: {image_prompt}")
+            
             with st.spinner("جاري رسم الصورة..."):
-                try:
-                    encoded_prompt = urllib.parse.quote(image_prompt)
-                    image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
-                    st.success("تم توليد الصورة بنجاح!")
-                    st.image(image_url, caption=image_prompt, use_column_width=True)
-                except Exception as e:
-                    st.error(f"خطأ: {e}")
+                encoded_prompt = urllib.parse.quote(image_prompt)
+                image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
+                st.success("تم توليد الصورة بنجاح!")
+                st.image(image_url, caption=image_prompt, use_column_width=True)
         else:
             st.warning("الرجاء كتابة وصف للصورة أولاً.")
 
 # ==========================================
-# 5. قسم محرر الصور والفلاتر
+# 6. قسم محرر الصور
 # ==========================================
 elif app_mode == "✏️ محرر الصور والفلاتر":
     st.title("✏️ ميمو - محرر الصور")
-    st.write("ارفع صورتك وعدل إضاءتها وتباينها بلمسة زر.")
-    st.markdown("---")
-
     file = st.file_uploader("اختر صورة...", type=["jpg", "png", "jpeg"])
     if file:
         img = Image.open(file)
         st.image(img, caption="الصورة الأصلية", use_column_width=True)
-
-        st.sidebar.markdown("### أدوات التعديل")
         brightness = st.sidebar.slider("الإضاءة", 0.1, 3.0, 1.0)
         contrast = st.sidebar.slider("التباين", 0.1, 3.0, 1.0)
-
         edited = ImageEnhance.Brightness(img).enhance(brightness)
         edited = ImageEnhance.Contrast(edited).enhance(contrast)
-
-        st.subheader("الصورة النهائية:")
         st.image(edited, caption="بعد التعديل", use_column_width=True)
+
+# ==========================================
+# 7. لوحة تحكم الأدمن
+# ==========================================
+elif app_mode == "📊 لوحة تحكم الأدمن (سجل الأبحاث)":
+    st.title("📊 لوحة تحكم الأدمن - سجل عمليات البحث والأسئلة")
+    st.write("هنا يمكنك متابعة كل كلمة بحث أو سؤال كتبه أي مستخدم دخل التطبيق:")
+    st.markdown("---")
+
+    if os.path.exists("search_logs.txt"):
+        if st.button("🔄 تحديث السجل"):
+            st.rerun()
+            
+        with open("search_logs.txt", "r", encoding="utf-8") as f:
+            logs_data = f.readlines()
+            
+        if logs_data:
+            st.download_button(
+                label="📥 تحميل سجل الأبحاث كملف نصي",
+                data="".join(logs_data),
+                file_name="all_user_searches.txt",
+                mime="text/plain"
+            )
+            st.markdown("---")
+            for log in reversed(logs_data):
+                st.code(log.strip(), language="text")
+        else:
+            st.info("لا توجد عمليات بحث مسجلة حتى الآن.")
+    else:
+        st.info("لم يتم تسجيل أي عمليات بحث بعد.")
