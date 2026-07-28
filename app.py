@@ -58,17 +58,10 @@ if not st.session_state.logged_in:
             
             wa_message = f"مرحباً، أريد تفعيل تطبيق ميمو. رقم هاتفي هو: {st.session_state.user_phone}"
             encoded_message = urllib.parse.quote(wa_message)
-            wa_link = f"https://api.whatsapp.com/send?phone={MY_WHATSAPP_NUMBER}&text={encoded_message}"
+            wa_link = f"https://wa.me/{MY_WHATSAPP_NUMBER}?text={encoded_message}"
             
-            st.markdown(f"""
-                <div style="text-align: center; margin: 20px 0;">
-                    <a href="{wa_link}" target="_blank">
-                        <button style="width: 100%; background-color: #25D366; color: white; padding: 14px; border: none; border-radius: 30px; font-size: 17px; font-weight: bold; cursor: pointer;">
-                            💚 اضغط هنا للتواصل عبر الواتساب
-                        </button>
-                    </a>
-                </div>
-            """, unsafe_allow_html=True)
+            # استخدام زر الـ Link المباشر من ستريمليت لمنع أي حظر في المتصفح
+            st.link_button("💚 اضغط هنا للتواصل عبر الواتساب", wa_link, use_container_width=True)
             
             st.markdown("---")
             entered_code = st.text_input("أدخل كود التفعيل المكون من 4 أرقام:", max_chars=4, type="password")
