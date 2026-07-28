@@ -12,7 +12,7 @@ st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="w
 # رقم واتساب الخاص بك (لاستقبال الرسائل)
 MY_WHATSAPP_NUMBER = "201213783090"
 
-# الأكواد المكونة من 4 أرقام (أعطِ أي كود منها للمستخدم بعد أن يراسل)
+# الأكواد المكونة من 4 أرقام لتفعيل التطبيق
 VALID_CODES = {
     "1111": "active",
     "2222": "active",
@@ -47,7 +47,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# ملف حفظ الجلسة لكي يظل التطبيق مفتوحاً ودائماً مع المستخدم بعد إدخال الكود
 SESSION_FILE = "permanent_user_session.txt"
 
 if "logged_in" not in st.session_state:
@@ -75,14 +74,14 @@ if not st.session_state.logged_in:
         st.markdown("""
             <div style="text-align: center;">
                 <h1>🤖 تفعيل تطبيق ميمو</h1>
-                <p style="color: gray;">اكتب رقمك واضغط على الزر ليتم إرسال رسالة تفعيلك عبر الواتساب</p>
+                <p style="color: gray;">اكتب رقمك ثم اضغط على زر الواتساب بالأسفل لمراسلتي</p>
             </div>
         """, unsafe_allow_html=True)
         
         if st.session_state.step == "phone_step":
             phone_input = st.text_input("أدخل رقم هاتفك:", placeholder="مثال: 010xxxxxxxx")
             
-            if st.button("تجهيز رسالة الواتساب", use_container_width=True):
+            if st.button("حفظ الرقم والمتابعة", use_container_width=True):
                 if phone_input:
                     st.session_state.user_phone = phone_input.strip()
                     st.session_state.step = "code_step"
@@ -93,24 +92,23 @@ if not st.session_state.logged_in:
         elif st.session_state.step == "code_step":
             st.success(f"رقمك المسجل: **{st.session_state.user_phone}**")
             
-            # تجهيز نص رسالة الواتساب التي سيرسلها المستخدم من جهازه
+            # تجهيز رسالة الواتساب
             wa_message = f"مرحباً يا فنان، أريد تفعيل تطبيق ميمو ليبقى مفتوحاً دائماً.\nرقم هاتفي هو: {st.session_state.user_phone}"
             encoded_message = urllib.parse.quote(wa_message)
             wa_link = f"https://wa.me/{MY_WHATSAPP_NUMBER}?text={encoded_message}"
             
-            # زر واتساب مباشر وواضح جداً للمستخدم
+            # زر علامة الواتساب في الأسفل بالشكل المطلوب
             st.markdown(f"""
-                <div style="text-align: center; margin: 20px 0;">
+                <div style="text-align: center; margin: 15px 0;">
                     <a href="{wa_link}" target="_blank" style="text-decoration: none;">
-                        <div style="background-color: #25D366; color: white; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
-                            💬 اضغط هنا لإرسال رسالة الواتساب إليّ الآن
+                        <div style="background-color: #25D366; color: white; padding: 12px 20px; border-radius: 50px; font-size: 16px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
+                            <span>💚 اضغط هنا للتواصل عبر الواتساب</span>
                         </div>
                     </a>
                 </div>
             """, unsafe_allow_html=True)
             
-            st.info("بعد إرسال الرسالة عبر الواتساب، انتظر مني كود التفعيل المكون من 4 أرقام وضعه بالأسفل:")
-            
+            st.markdown("---")
             entered_code = st.text_input("أدخل كود التفعيل المكون من 4 أرقام:", max_chars=4, type="password")
             
             if st.button("فتح التطبيق وثبته دائماً", use_container_width=True):
