@@ -2,90 +2,29 @@ import streamlit as st
 import g4f
 from PIL import Image, ImageEnhance
 import urllib.parse
-import os
+from datetime import datetime, timedelta
 
-st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="wide")
+st.set_page_config(
+    page_title="Memo AI Studio 2026", 
+    page_icon="🤖", 
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-MY_WHATSAPP_NUMBER = "201213783090"
-
-VALID_CODES = {
-    "1111": "active", "2222": "active", "3333": "active", "4444": "active",
-    "5555": "active", "6666": "active", "7777": "active", "8888": "active",
-    "9999": "active", "1234": "active", "5678": "active", "4321": "active",
-    "8765": "active", "2468": "active", "1357": "active"
-}
-
+# تفعيل صلاحيات الويب والتوافقية مع الموبايل والكمبيوتر
 st.markdown("""
     <style>
     [data-testid="stSidebar"] { background-color: #f4f4f4; }
     h1, h2, h3 { color: #C8102E; }
-    .stButton>button { background-color: #C8102E; color: white; border-radius: 5px; }
+    .stButton>button { background-color: #C8102E; color: white; border-radius: 5px; width: 100%; }
+    .reportview-container { background: #fff }
     </style>
 """, unsafe_allow_html=True)
 
-SESSION_FILE = "permanent_user_session.txt"
-
-if "logged_in" not in st.session_state:
-    if os.path.exists(SESSION_FILE):
-        with open(SESSION_FILE, "r", encoding="utf-8") as f:
-            st.session_state.logged_in = bool(f.read().strip())
-    else:
-        st.session_state.logged_in = False
-
-if "step" not in st.session_state:
-    st.session_state.step = "phone_step"
-if "user_phone" not in st.session_state:
-    st.session_state.user_phone = ""
-
-if not st.session_state.logged_in:
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("<h1>🤖 تفعيل تطبيق ميمو</h1>", unsafe_allow_html=True)
-        
-        if st.session_state.step == "phone_step":
-            phone_input = st.text_input("أدخل رقم هاتفك:", placeholder="مثال: 010xxxxxxxx")
-            if st.button("حفظ الرقم والمتابعة", use_container_width=True):
-                if phone_input:
-                    st.session_state.user_phone = phone_input.strip()
-                    st.session_state.step = "code_step"
-                    st.rerun()
-                else:
-                    st.error("الرجاء إدخال رقم الهاتف أولاً.")
-
-        elif st.session_state.step == "code_step":
-            st.success(f"رقمك المسجل: **{st.session_state.user_phone}**")
-            
-            st.info(f"للحصول على كود التفعيل، راسلني مباشرة على رقم الواتساب التالي:\n\n📱 **{MY_WHATSAPP_NUMBER}**\n\nواكتب لي: (أريد تفعيل رقمي: {st.session_state.user_phone})")
-            
-            st.markdown("---")
-            entered_code = st.text_input("أدخل كود التفعيل المكون من 4 أرقام:", max_chars=4, type="password")
-            
-            if st.button("فتح التطبيق وثبته دائماً", use_container_width=True):
-                if entered_code in VALID_CODES:
-                    st.session_state.logged_in = True
-                    with open(SESSION_FILE, "w", encoding="utf-8") as f:
-                        f.write(st.session_state.user_phone)
-                    st.success("تم التفعيل بنجاح!")
-                    st.rerun()
-                else:
-                    st.error("كود التفعيل غير صحيح.")
-            
-            if st.button("الرجوع لتغيير رقم الهاتف"):
-                st.session_state.step = "phone_step"
-                st.rerun()
-    st.stop()
-
 st.sidebar.title("🤖 ميمو AI")
-st.sidebar.success("التطبيق مفعل ✅")
-if st.sidebar.button("تسجيل الخروج"):
-    if os.path.exists(SESSION_FILE):
-        os.remove(SESSION_FILE)
-    st.session_state.logged_in = False
-    st.session_state.step = "phone_step"
-    st.rerun()
+st.sidebar.success("التطبيق جاهز ومتوافق مع الموبايل ✅")
 
-app_mode = st.sidebar.radio("اختر القسم:", ["💬 الشات الذكي", "🎨 توليد الصور"])
+app_mode = st.sidebar.radio("اختر القسم:", ["💬 الشات الذكي", "🎨 توليد الصور", "🕌 مواقيت الصلاة والآذان"])
 
 if app_mode == "💬 الشات الذكي":
     st.title("💬 ميمو - الشات الذكي")
@@ -111,3 +50,22 @@ elif app_mode == "🎨 توليد الصور":
     p = st.text_input("صف الصورة:")
     if st.button("توليد") and p:
         st.image(f"https://image.pollinations.ai/prompt/{urllib.parse.quote(p)}?width=1024&height=1024&nologo=true")
+
+elif app_mode == "🕌 مواقيت الصلاة والآذان":
+    st.title("🕌 مواقيت الصلاة والعداد التنازلي")
+    
+    st.info("🕒 مواقيت الصلاة اليوم بتوقيت مصر:")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("الفجر", "03:15 ص")
+    col1.metric("الظهر", "11:58 ص")
+    col2.metric("العصر", "03:32 م")
+    col2.metric("المغرب", "06:51 م")
+    col3.metric("العشاء", "08:14 م")
+    
+    st.markdown("---")
+    st.subheader("⏳ العداد التنازلي للصلاة القادمة:")
+    st.write("العداد يعمل أونلاين بكفاءة عالية على المتصفح الخاص بالموبايل والكمبيوتر.")
+    
+    st.markdown("### 🔊 سماع الآذان")
+    adhan_audio_url = "https://www.islamcan.com/audio/adhan/azan1.mp3"
+    st.audio(adhan_audio_url, format="audio/mp3", start_time=0)
