@@ -56,12 +56,7 @@ if not st.session_state.logged_in:
         elif st.session_state.step == "code_step":
             st.success(f"رقمك المسجل: **{st.session_state.user_phone}**")
             
-            wa_message = f"مرحباً، أريد تفعيل تطبيق ميمو. رقم هاتفي هو: {st.session_state.user_phone}"
-            encoded_message = urllib.parse.quote(wa_message)
-            wa_link = f"https://wa.me/{MY_WHATSAPP_NUMBER}?text={encoded_message}"
-            
-            # استخدام زر الـ Link المباشر من ستريمليت لمنع أي حظر في المتصفح
-            st.link_button("💚 اضغط هنا للتواصل عبر الواتساب", wa_link, use_container_width=True)
+            st.info(f"للحصول على كود التفعيل، راسلني مباشرة على رقم الواتساب التالي:\n\n📱 **{MY_WHATSAPP_NUMBER}**\n\nواكتب لي: (أريد تفعيل رقمي: {st.session_state.user_phone})")
             
             st.markdown("---")
             entered_code = st.text_input("أدخل كود التفعيل المكون من 4 أرقام:", max_chars=4, type="password")
