@@ -92,16 +92,16 @@ if not st.session_state.logged_in:
         elif st.session_state.step == "code_step":
             st.success(f"رقمك المسجل: **{st.session_state.user_phone}**")
             
-            # تجهيز رسالة الواتساب
+            # تجهيز رسالة الواتساب وتعديل الرابط ليفتح بدون مشاكل حظر المتصفح
             wa_message = f"مرحباً يا فنان، أريد تفعيل تطبيق ميمو ليبقى مفتوحاً دائماً.\nرقم هاتفي هو: {st.session_state.user_phone}"
             encoded_message = urllib.parse.quote(wa_message)
             wa_link = f"https://wa.me/{MY_WHATSAPP_NUMBER}?text={encoded_message}"
             
-            # زر علامة الواتساب في الأسفل بالشكل المطلوب
+            # زر واتساب مباشر ومحسن يعمل بكفاءة على جميع المتصفحات والموبايلات
             st.markdown(f"""
-                <div style="text-align: center; margin: 15px 0;">
-                    <a href="{wa_link}" target="_blank" style="text-decoration: none;">
-                        <div style="background-color: #25D366; color: white; padding: 12px 20px; border-radius: 50px; font-size: 16px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin: 20px 0;">
+                    <a href="{wa_link}" target="_self" style="text-decoration: none;">
+                        <div style="background-color: #25D366; color: white; padding: 14px 20px; border-radius: 30px; font-size: 17px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0px 4px 6px rgba(0,0,0,0.1); width: 100%;">
                             <span>💚 اضغط هنا للتواصل عبر الواتساب</span>
                         </div>
                     </a>
