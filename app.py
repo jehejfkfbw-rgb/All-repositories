@@ -2,22 +2,34 @@ import streamlit as st
 import g4f
 from PIL import Image, ImageEnhance
 import urllib.parse
-from datetime import datetime
-import pytz
-import requests
-import random
 import os
 
 # ==========================================
-# 1. إعدادات التطبيق وتليجرام والأمان
+# 1. إعدادات التطبيق الأساسية
 # ==========================================
 st.set_page_config(page_title="Memo AI Studio 2026", page_icon="🤖", layout="wide")
 
-# توكن البوت الخاص بك على تليجرام (MemoBot)
-TELEGRAM_BOT_TOKEN = "ضع_الـ_Token_الخاص_ببوتك_هنا"     
-TELEGRAM_CHAT_ID = "8672781771" # معرفك الشخصي لاستقبال رقم المستخدم والكود
+# رقم واتساب الخاص بك (استبدله برقمك الشخصي لكي تصلك الرسائل عليه)
+MY_WHATSAPP_NUMBER = "201213783090"
 
-ADMIN_PHONE = "01213783090"
+# الأكواد المكونة من 4 أرقام (يمكنك استخدامها وإعطاؤها للمستخدمين)
+VALID_CODES = {
+    "1111": "active",
+    "2222": "active",
+    "3333": "active",
+    "4444": "active",
+    "5555": "active",
+    "6666": "active",
+    "7777": "active",
+    "8888": "active",
+    "9999": "active",
+    "1234": "active",
+    "5678": "active",
+    "4321": "active",
+    "8765": "active",
+    "2468": "active",
+    "1357": "active"
+}
 
 st.markdown("""
     <style>
@@ -35,53 +47,26 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-SESSION_FILE = "user_saved_phone_session.txt"
+# ملف حفظ الجلسة لكي يظل التطبيق مفتوحاً ودائماً مع المستخدم بعد إدخال الكود
+SESSION_FILE = "permanent_user_session.txt"
 
 if "logged_in" not in st.session_state:
     if os.path.exists(SESSION_FILE):
         with open(SESSION_FILE, "r", encoding="utf-8") as f:
-            saved_data = f.read().strip()
-            if saved_data:
+            if f.read().strip():
                 st.session_state.logged_in = True
-                st.session_state.user_phone = saved_data
             else:
                 st.session_state.logged_in = False
-                st.session_state.user_phone = ""
     else:
         st.session_state.logged_in = False
-        st.session_state.user_phone = ""
 
-if "telegram_code" not in st.session_state:
-    st.session_state.telegram_code = None
-if "pending_phone" not in st.session_state:
-    st.session_state.pending_phone = ""
 if "step" not in st.session_state:
-    st.session_state.step = "phone_input"
-
-# دالة إرسال رقم الهاتف و الـ 4 أرقام على بوتك في تليجرام
-def send_phone_and_code_to_telegram(phone, code):
-    current_time = datetime.now(pytz.timezone('Africa/Cairo')).strftime('%Y-%m-%d %I:%M:%S %p')
-    message = f"🚨 طلب تسجيل جديد في ميمو!\n\n📱 رقم الهاتف: {phone}\n🔑 كود التحقق (4 أرقام): {code}\n⏰ الوقت: {current_time}"
-    
-    try:
-        log_entry = f"[{current_time}] | Phone: {phone} | Code: {code}\n"
-        with open("search_logs.txt", "a", encoding="utf-8") as f:
-            f.write(log_entry)
-    except Exception:
-        pass
-        
-    try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": message
-        }
-        requests.post(url, json=payload, timeout=5)
-    except Exception as e:
-        print(f"Telegram Error: {e}")
+    st.session_state.step = "phone_step"
+if "user_phone" not in st.session_state:
+    st.session_state.user_phone = ""
 
 # ==========================================
-# 2. شاشة تسجيل الدخول برقم الهاتف
+# 2. شاشة التفعيل وطلب الكود عبر الواتساب
 # ==========================================
 if not st.session_state.logged_in:
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -89,87 +74,74 @@ if not st.session_state.logged_in:
     with col2:
         st.markdown("""
             <div style="text-align: center;">
-                <h1>🤖 تسجيل الدخول لتطبيق ميمو</h1>
-                <p style="color: gray;">أدخل رقم هاتفك لتلقي الكود</p>
+                <h1>🤖 تفعيل تطبيق ميمو</h1>
+                <p style="color: gray;">اكتب رقمك واطلب تفعيل التطبيق ليعمل معك دائماً</p>
             </div>
         """, unsafe_allow_html=True)
         
-        if st.session_state.step == "phone_input":
-            user_phone = st.text_input("أدخل رقم هاتفك:", placeholder="اكتب رقم الهاتف هنا...")
+        if st.session_state.step == "phone_step":
+            phone_input = st.text_input("أدخل رقم هاتفك:", placeholder="مثال: 010xxxxxxxx")
             
-            if st.button("إرسال طلب الكود", use_container_width=True):
-                if user_phone:
-                    clean_input = user_phone.strip()
-                    st.session_state.pending_phone = clean_input
-                    
-                    if clean_input == ADMIN_PHONE:
-                        st.session_state.step = "admin_verify"
-                        st.rerun()
-                    else:
-                        # توليد 4 أرقام عشوائية
-                        code = str(random.randint(1000, 9999))
-                        st.session_state.telegram_code = code
-                        
-                        # إرسال الرقم والكود لبوتك على تليجرام فوراً
-                        send_phone_and_code_to_telegram(clean_input, code)
-                        
-                        st.session_state.step = "verify_user"
-                        st.success("تم إرسال رقم هاتفك والكود إلى بوت تليجرام الخاص بك بنجاح!")
-                        st.rerun()
-                else:
-                    st.error("الرجاء إدخال رقم الهاتف.")
-
-        elif st.session_state.step == "admin_verify":
-            st.info("أهلاً بك يا فنان (المدير). أدخل رمز الأمان الخاص بك:")
-            admin_code_input = st.text_input("رمز الأمان:", type="password", max_chars=4)
-            
-            if st.button("دخول المدير", use_container_width=True):
-                if admin_code_input == "0000":
-                    st.session_state.logged_in = True
-                    st.session_state.user_phone = ADMIN_PHONE
-                    with open(SESSION_FILE, "w", encoding="utf-8") as f:
-                        f.write(ADMIN_PHONE)
-                    st.success("تم الدخول بنجاح! جارٍ فتح لوحة التحكم...")
+            if st.button("إرسال رقمي عبر الواتساب لطلب التفعيل", use_container_width=True):
+                if phone_input:
+                    st.session_state.user_phone = phone_input.strip()
+                    st.session_state.step = "code_step"
                     st.rerun()
                 else:
-                    st.error("الكود خطأ! المدير يدخل بـ (0000).")
+                    st.error("الرجاء إدخال رقم الهاتف أولاً.")
 
-        elif st.session_state.step == "verify_user":
-            st.info(f"الرقم المسجل: **{st.session_state.pending_phone}**")
-            entered_code = st.text_input("أدخل الـ 4 أرقام التي وصلت لك على البوت:", max_chars=4)
+        elif st.session_state.step == "code_step":
+            st.info(f"رقمك المسجل: **{st.session_state.user_phone}**")
             
-            if st.button("تأكيد الدخول", use_container_width=True):
-                if entered_code == st.session_state.telegram_code:
+            # رسالة الواتساب التي ستصل إليك برقم المستخدم
+            wa_message = f"مرحباً يا فنان، أريد تفعيل تطبيق ميمو ليبقى مفتوحاً دائماً.\nرقم هاتفي هو: {st.session_state.user_phone}"
+            encoded_message = urllib.parse.quote(wa_message)
+            wa_link = f"https://wa.me/{MY_WHATSAPP_NUMBER}?text={encoded_message}"
+            
+            st.markdown(f"""
+                <a href="{wa_link}" target="_blank">
+                    <button style="width: 100%; background-color: #25D366; color: white; padding: 10px; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; text-align: center; margin-bottom: 15px;">
+                        💬 اضغط هنا لمراسلتي على الواتساب وطلب كود التفعيل
+                    </button>
+                </a>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            entered_code = st.text_input("أدخل كود التفعيل المكون من 4 أرقام:", max_chars=4, type="password")
+            
+            if st.button("فتح التطبيق وثبته دائماً", use_container_width=True):
+                if entered_code in VALID_CODES:
                     st.session_state.logged_in = True
-                    st.session_state.user_phone = st.session_state.pending_phone
                     with open(SESSION_FILE, "w", encoding="utf-8") as f:
                         f.write(st.session_state.user_phone)
-                    st.success("تم التحقق بنجاح! جارٍ فتح التطبيق...")
+                    st.success("تم التفعيل بنجاح! سيبقى التطبيق مفتوحاً معك دائماً...")
                     st.rerun()
                 else:
-                    st.error("الـ 4 أرقام غير صحيحة، راجع رسالة البوت.")
+                    st.error("كود التفعيل غير صحيح.")
+            
+            if st.button("الرجوع لتغيير رقم الهاتف"):
+                st.session_state.step = "phone_step"
+                st.rerun()
+                
     st.stop()
 
 # ==========================================
-# 3. واجهة التطبيق الرئيسية
+# 3. واجهة التطبيق الرئيسية (مفتوحة وثابتة دائماً)
 # ==========================================
 st.sidebar.title("🤖 ميمو AI - InnovaSoft")
-role_text = "مدير النظام (Admin)" if st.session_state.user_phone == ADMIN_PHONE else "مستخدم مسجل"
-st.sidebar.success(f"الصلاحية: {role_text}")
+st.sidebar.success("التطبيق مفعل ومفتوح دائماً ✅")
 
-if st.sidebar.button("تسجيل الخروج تماماً"):
+if st.sidebar.button("إلغاء التفعيل (تسجيل الخروج)"):
     if os.path.exists(SESSION_FILE):
         os.remove(SESSION_FILE)
     st.session_state.logged_in = False
-    st.session_state.user_phone = ""
-    st.session_state.step = "phone_input"
+    st.session_state.step = "phone_step"
     st.rerun()
 
 st.sidebar.markdown("---")
 menu_options = [
     "💬 الشات الذكي", 
-    "🎨 توليد الصور بالذكاء الاصطناعي", 
-    "📊 لوحة تحكم الأدمن (سجل الأبحاث)"
+    "🎨 توليد الصور بالذكاء الاصطناعي"
 ]
 app_mode = st.sidebar.radio("اختر القسم:", menu_options)
 
@@ -213,11 +185,3 @@ elif app_mode == "🎨 توليد الصور بالذكاء الاصطناعي":
     if st.button("توليد الصورة"):
         if image_prompt:
             st.image(f"https://image.pollinations.ai/prompt/{urllib.parse.quote(image_prompt)}?width=1024&height=1024&nologo=true", caption=image_prompt)
-
-elif app_mode == "📊 لوحة تحكم الأدمن (سجل الأبحاث)":
-    st.title("📊 لوحة تحكم الأدمن - السجلات")
-    if os.path.exists("search_logs.txt"):
-        with open("search_logs.txt", "r", encoding="utf-8") as f:
-            st.code(f.read(), language="text")
-    else:
-        st.info("لا توجد سجلات بحث حتى الآن.")
