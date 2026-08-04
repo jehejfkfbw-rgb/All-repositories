@@ -3,5 +3,5 @@ g4f
 requests
 pillow
 pytz
-gtts
+gTTS
 extra-streamlit-components
