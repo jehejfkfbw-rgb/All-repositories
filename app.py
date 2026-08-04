@@ -6,7 +6,7 @@ import time
 from gtts import gTTS
 import os
 
-# --- إعدادات الصفحة والهوية الجديدة ---
+# --- إعدادات الصفحة والهوية ---
 st.set_page_config(
     page_title="Nova AI Studio - Kivo", 
     page_icon="⚡", 
@@ -21,20 +21,26 @@ st.markdown("""
     h1, h2, h3 { color: #1E88E5; }
     .stButton>button { background-color: #1E88E5; color: white; border-radius: 5px; width: 100%; }
     .history-item { padding: 10px; background-color: #e0e0e0; border-radius: 5px; margin-bottom: 5px; font-size: 14px;}
-    .login-box { padding: 30px; border-radius: 10px; background-color: #ffffff; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
     </style>
 """, unsafe_allow_html=True)
 
-# --- حالة تسجيل الدخول ---
+# --- البريد الخاص بالمطور التنفيذي ---
+EXECUTIVE_EMAIL = "jehejfkfbw@gmail.com"
+
+# --- إدارة حالة تسجيل الدخول (لتسجيل المرة الواحدة) ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
+if "user_email" not in st.session_state:
+    st.session_state.user_email = ""
+if "is_executive" not in st.session_state:
+    st.session_state.is_executive = False
 
 # ==========================================
-# 🔒 1. شاشة التسجيل (البريد الإلكتروني + كلمة السر)
+# 🔒 1. شاشة التسجيل (تظهر مرة واحدة فقط)
 # ==========================================
 if not st.session_state.logged_in:
     st.title("⚡ مرحباً بك في Nova AI")
-    st.caption("إحدى تطويرات شركة Kivo")
+    st.caption("إحدى تطويرات شركة كيفو (Kivo)")
     st.markdown("---")
     
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -44,26 +50,46 @@ if not st.session_state.logged_in:
         password = st.text_input("كلمة السر (Password)", type="password", placeholder="••••••••")
         
         if st.button("دخول"):
-            if email.strip() != "" and password.strip() != "":
+            clean_email = email.strip().lower()
+            if clean_email != "" and password.strip() != "":
                 st.session_state.logged_in = True
-                st.session_state.user_email = email
-                st.success("تم تسجيل الدخول بنجاح!")
+                st.session_state.user_email = clean_email
+                
+                # التحقق إذا كان البريد للمطور التنفيذي أم مستخدم عادي
+                if clean_email == EXECUTIVE_EMAIL.lower():
+                    st.session_state.is_executive = True
+                    st.success("مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو!")
+                else:
+                    st.session_state.is_executive = False
+                    st.success("مرحباً بك في تطبيق Nova من شركة كيفو! يسعدنا انضمامك إلينا.")
+                
+                time.sleep(1)
                 st.rerun()
             else:
                 st.error("يرجى إدخال البريد الإلكتروني وكلمة السر بشكل صحيح.")
 
 # ==========================================
-# 🚀 2. التطبيق الرئيسي (بعد تسجيل الدخول)
+# 🚀 2. التطبيق الرئيسي (بعد التسجيل)
 # ==========================================
 else:
     st.sidebar.title("⚡ نوفا | Nova AI")
-    st.sidebar.caption("تطبيق تابع لشركة **Kivo**")
-    st.sidebar.success(f"مرحباً: {st.session_state.user_email}")
+    st.sidebar.caption("تطبيق تابع لشركة **كيفو (Kivo)**")
 
-    # --- إدارة سجل المحادثات ---
+    # ترحيب القائمة الجانبية حسب صفة المستخدم
+    if st.session_state.is_executive:
+        st.sidebar.success("👑 المطور التنفيذي: محمد عادل")
+    else:
+        st.sidebar.info(f"👤 العميل: {st.session_state.user_email}")
+
+    # --- إدارة سجل المحادثات والرسالة الترحيبية الأولى ---
     if "messages" not in st.session_state:
+        if st.session_state.is_executive:
+            welcome_msg = "مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو! نظام Nova في خدمتك بالكامل."
+        else:
+            welcome_msg = "مرحباً بك في تطبيق Nova من شركة كيفو! أنا مساعدك الذكي، كيف يمكنني مساعدتك اليوم؟"
+            
         st.session_state.messages = [
-            {"role": "assistant", "content": "أهلاً بك! أنا **نوفا (Nova)** المساعد الذكي من شركة **Kivo**. كيف يمكنني مساعدتك اليوم؟"}
+            {"role": "assistant", "content": welcome_msg}
         ]
 
     st.sidebar.markdown("---")
@@ -79,13 +105,14 @@ else:
         st.sidebar.write("لا يوجد سجل حالياً.")
 
     if st.sidebar.button("🗑️ مسح السجل بالكامل"):
-        st.session_state.messages = [
-            {"role": "assistant", "content": "أهلاً بك! أنا **نوفا (Nova)** المساعد الذكي من شركة **Kivo**. كيف يمكنني مساعدتك اليوم؟"}
-        ]
+        initial_msg = "مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو!" if st.session_state.is_executive else "مرحباً بك في تطبيق Nova من شركة كيفو!"
+        st.session_state.messages = [{"role": "assistant", "content": initial_msg}]
         st.rerun()
 
     if st.sidebar.button("🚪 تسجيل الخروج"):
         st.session_state.logged_in = False
+        st.session_state.user_email = ""
+        st.session_state.is_executive = False
         st.rerun()
 
     st.sidebar.markdown("---")
@@ -97,7 +124,11 @@ else:
     # ------------------------------------------
     if app_mode == "💬 الشات الذكي (Nova)":
         st.title("⚡ الذكاء الاصطناعي Nova")
-        st.markdown("### مرحباً بك في **Nova** من شركة **Kivo**، اسأله أي سؤال وسيجيبك فوراً.")
+        
+        if st.session_state.is_executive:
+            st.success("🌟 أهلاً بك يا أستاذ محمد عادل (المطور التنفيذي لشركة كيفو)")
+        else:
+            st.markdown("### مرحباً بك في **Nova** من شركة **كيفو (Kivo)**، اسأله أي سؤال وسيجيبك فوراً.")
             
         for m in st.session_state.messages:
             with st.chat_message(m["role"]):
@@ -109,14 +140,13 @@ else:
                 st.markdown(user_prompt)
                 
             with st.chat_message("assistant"):
-                # تعليمات المساعد الذكي حول المطور والشركة
+                # تعليمات الذكاء الاصطناعي حول المطور والشركة
                 system_instruction = (
-                    "أنت مساعد ذكي اسمك Nova (نوفا) تابع لشركة Kivo (كيفو). "
+                    "أنت مساعد ذكي اسمك Nova (نوفا) تابع لشركة كيفو (Kivo). "
                     "إذا سألك أي شخص من المطور أو من صنعك أو من طورك، يجب أن تجيب دائماً بوضوح وبصيغة احترافية: "
-                    "'المطور التنفيذي هو محمد عادل من شركة Kivo (كيفو)'."
+                    "'المطور التنفيذي هو محمد عادل من شركة كيفو (Kivo)'."
                 )
                 
-                # إعداد المحادثة مع إرسال التوجيهات
                 api_messages = [
                     {"role": "system", "content": system_instruction},
                     {"role": "user", "content": user_prompt}
