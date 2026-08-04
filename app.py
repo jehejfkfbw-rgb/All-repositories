@@ -24,10 +24,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- البريد الخاص بالمطور التنفيذي ---
+# --- البريد المخصص للمطور التنفيذي ---
 EXECUTIVE_EMAIL = "jehejfkfbw@gmail.com"
 
-# --- إدارة حالة تسجيل الدخول (لتسجيل المرة الواحدة) ---
+# --- إدارة حالة تسجيل الدخول ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "user_email" not in st.session_state:
@@ -46,7 +46,7 @@ if not st.session_state.logged_in:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.subheader("🔑 تسجيل الدخول")
-        email = st.text_input("البريد الإلكتروني (Email)", placeholder="name@example.com")
+        email = st.text_input("البريد الإلكتروني (Email)", placeholder="jehejfkfbw@gmail.com")
         password = st.text_input("كلمة السر (Password)", type="password", placeholder="••••••••")
         
         if st.button("دخول"):
@@ -55,7 +55,7 @@ if not st.session_state.logged_in:
                 st.session_state.logged_in = True
                 st.session_state.user_email = clean_email
                 
-                # التحقق إذا كان البريد للمطور التنفيذي أم مستخدم عادي
+                # التحقق المباشر من بريد المطور التنفيذي
                 if clean_email == EXECUTIVE_EMAIL.lower():
                     st.session_state.is_executive = True
                     st.success("مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو!")
@@ -75,7 +75,7 @@ else:
     st.sidebar.title("⚡ نوفا | Nova AI")
     st.sidebar.caption("تطبيق تابع لشركة **كيفو (Kivo)**")
 
-    # ترحيب القائمة الجانبية حسب صفة المستخدم
+    # ترحيب القائمة الجانبية
     if st.session_state.is_executive:
         st.sidebar.success("👑 المطور التنفيذي: محمد عادل")
     else:
