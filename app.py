@@ -7,41 +7,39 @@ import os
 import requests
 
 # ==========================================
-# ⚙️ 1. إعدادات الهوية وإجبار ظهور زر الشرطتين للموبايل
+# ⚙️ 1. الإعدادات الأساسية
 # ==========================================
 st.set_page_config(
     page_title="Nova AI Studio - Kivo", 
     page_icon="⚡", 
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed" # تبدأ مغلقة وتفتح بزر الثلاث شرط
 )
 
-# كود CSS لضمان إظهار زر القائمة الجانبية (الشرطتين) وتلوينه ليكون واضحاً على الموبايل
+# كود CSS لتثبيت وتوضيح زر القائمة (الثلاث شرط) وجعله بارزاً دائماً للموبايل
 st.markdown("""
     <style>
-    /* إظهار وتلوين زر القائمة الجانبية (الشرطتين) على الهواتف والشاشات */
+    /* إجبار ظهور زر التحكم بالقائمة الجانبية وجعله واضحاً جداً */
     [data-testid="collapsedControl"] {
         display: block !important;
         visibility: visible !important;
         background-color: #1E88E5 !important;
         color: white !important;
-        border-radius: 50% !important;
-        padding: 5px !important;
-        margin: 5px !important;
+        border-radius: 8px !important;
+        padding: 4px 8px !important;
         z-index: 999999 !important;
     }
-    
     [data-testid="collapsedControl"] svg {
         fill: white !important;
     }
 
-    /* تنسيق القائمة الجانبية */
+    /* تنسيق الشريط الجانبي */
     [data-testid="stSidebar"] { 
         background-color: #0d1117 !important; 
         color: #c9d1d9 !important;
     }
     
-    /* أزرار التطبيق */
+    /* الأزرار */
     .stButton>button { 
         background: linear-gradient(135deg, #1E88E5 0%, #1565C0 100%); 
         color: white !important; 
@@ -55,7 +53,7 @@ st.markdown("""
         background: #1565C0 !important;
     }
     
-    /* كروت السجل الجانبي */
+    /* كروت السجل */
     .history-card {
         padding: 8px 12px;
         background-color: #161b22;
@@ -94,7 +92,7 @@ def delete_user_session():
 saved_user = get_saved_user()
 
 # ==========================================
-# 🔒 2. شاشة التسجيل (مرة واحدة فقط)
+# 🔒 2. شاشة التسجيل
 # ==========================================
 if not saved_user:
     st.title("⚡ مرحباً بك في منصة Nova AI")
@@ -110,7 +108,7 @@ if not saved_user:
         if st.button("دخول المنصة"):
             clean_email = email.strip().lower()
             if clean_email != "" and password.strip() != "":
-                with st.spinner("جاري تأكيد الهوية وحفظ الجلسة..."):
+                with st.spinner("جاري تأكيد الهوية..."):
                     save_user(clean_email)
                     time.sleep(0.5)
                     st.rerun()
@@ -118,14 +116,14 @@ if not saved_user:
                 st.error("يرجى إدخال البريد الإلكتروني وكلمة السر بشكل صحيح.")
 
 # ==========================================
-# 🚀 3. منصة Nova AI الرئيسية
+# 🚀 3. منصة Nova AI
 # ==========================================
 else:
     user_email = saved_user
     is_executive = (user_email.strip().lower() == EXECUTIVE_EMAIL.lower())
 
     # ------------------------------------------
-    # ☰ القائمة الجانبية (تفتح وتغلق بالزر البارز)
+    # ☰ القائمة الجانبية (تفتح بالضغط على زر الثلاث شرط في الأعلى)
     # ------------------------------------------
     st.sidebar.title("☰ القائمة والخيارات")
     st.sidebar.caption("تطبيق تابع لشركة **كيفو (Kivo)**")
@@ -135,7 +133,7 @@ else:
     else:
         st.sidebar.info(f"👤 المستخدم: {user_email}")
 
-    # تهيئة سجل المحادثات والوسائط
+    # تهيئة المحادثات والوسائط
     if "messages" not in st.session_state:
         welcome_msg = "مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو! نظام Nova في خدمتك بالكامل." if is_executive else "مرحباً بك في تطبيق Nova الشامل من شركة كيفو! اسألني أي سؤال، أو اطلب رسم صورة أو إنتاج فيديو!"
         st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
@@ -145,7 +143,7 @@ else:
 
     st.sidebar.markdown("---")
     
-    # 🗂️ أزرار وسجل المحادثات داخل القائمة الجانبية
+    # محتويات القائمة الجانبية
     st.sidebar.subheader("💬 المحادثات والسجل")
     
     if st.sidebar.button("➕ محادثة جديدة"):
@@ -192,7 +190,7 @@ else:
 
     st.sidebar.markdown("---")
 
-    # اختيار القسم من القائمة الجانبية
+    # اختيار القسم
     app_mode = st.sidebar.radio("📌 اختر القسم:", [
         "💬 الشات الذكي (محادثات + صور + فيديوهات)", 
         "🎨 استوديو توليد الصور والفيديوهات", 
@@ -200,10 +198,10 @@ else:
     ])
 
     # ------------------------------------------
-    # 🚀 الواجهة الرئيسية لتطبيق Nova
+    # 🚀 الواجهة الرئيسية
     # ------------------------------------------
     st.title("⚡ نوفا | Nova AI Studio")
-    st.caption("اضغط على زر القائمة (الشرطتين) الملون بالأزرق أعلى الشاشة لفتح السجل والقائمة الجانبية.")
+    st.caption("اضغط على **زر الثلاث شرط (☰)** في أعلى الشاشة لفتح القائمة الجانبية والسجل.")
     
     if is_executive:
         st.success("🌟 أهلاً بك يا أستاذ محمد عادل (المطور التنفيذي لشركة كيفو)")
@@ -241,10 +239,10 @@ else:
             with st.chat_message("assistant"):
                 prompt_lower = user_prompt.lower()
                 
-                img_keywords = ["صورة", "صوره", "ارسم", "انشئ صورة", "اعمل لي صورة", "اعمل لي صوره", "draw", "image"]
+                img_keywords = ["صورة", "صوره", "ارسم", "انشئ صورة", "اعمل لي صورة", "draw", "image"]
                 is_img_req = any(kw in prompt_lower for kw in img_keywords)
                 
-                video_keywords = ["فيديو", "فديو", "مقطع", "اعمل لي فيديو", "انشئ فيديو", "video", "movie"]
+                video_keywords = ["فيديو", "فديو", "مقطع", "اعمل لي فيديو", "video", "movie"]
                 is_video_req = any(kw in prompt_lower for kw in video_keywords)
 
                 if is_img_req:
@@ -285,8 +283,8 @@ else:
 
                 else:
                     system_instruction = (
-                        "أنت مساعد ذكي اسمك Nova (نوفا) تابع لشركة كيفو (Kivo). "
-                        "إذا سألك أي شخص من المطور أو من صنعك أو من طورك، يجب أن تجيب دائماً بوضوح وبصيغة احترافية: "
+                        "أنت مساعد ذكي اسمك Nova تابع لشركة كيفو (Kivo). "
+                        "إذا سألك أي شخص عن المطور أو من صنعك، أجب بدقة واحترافية: "
                         "'المطور التنفيذي هو محمد عادل من شركة كيفو (Kivo)'."
                     )
                     api_messages = [
@@ -300,17 +298,11 @@ else:
                         except Exception as e:
                             res_text = f"حدث خطأ أثناء الاتصال: {e}"
                     
-                    message_placeholder = st.empty()
-                    streamed_text = ""
-                    for word in res_text.split():
-                        streamed_text += word + " "
-                        message_placeholder.markdown(streamed_text + "▌")
-                        time.sleep(0.02)
-                    message_placeholder.markdown(res_text)
+                    st.markdown(res_text)
                     st.session_state.messages.append({"role": "assistant", "content": res_text})
 
     # ------------------------------------------
-    # 🎨 2. قسم استوديو الصور والفيديوهات
+    # 🎨 2. قسم استوديو الوسائط
     # ------------------------------------------
     elif app_mode == "🎨 استوديو توليد الصور والفيديوهات":
         st.title("🎨 استوديو الوسائط - Nova Studio")
@@ -325,7 +317,7 @@ else:
                     res = requests.get(img_url)
                     if res.status_code == 200:
                         st.image(res.content, caption=p_img)
-                        st.download_button("📥 تنزيل الصورة إلى جهازك", data=res.content, file_name="nova_img.png", mime="image/png")
+                        st.download_button("📥 تنزيل الصورة", data=res.content, file_name="nova_img.png", mime="image/png")
                         st.session_state.generated_media.append({"type": "image", "prompt": p_img, "url": img_url, "bytes": res.content})
 
         with tab2:
@@ -338,7 +330,7 @@ else:
                     st.session_state.generated_media.append({"type": "video", "prompt": p_vid, "url": vid_url})
 
     # ------------------------------------------
-    # 🕌 3. قسم مواقيت الصلاة
+    # 🕌 3. مواقيت الصلاة
     # ------------------------------------------
     elif app_mode == "🕌 مواقيت الصلاة والعداد التنازلي":
         st.title("🕌 مواقيت الصلاة والعداد التنازلي")
