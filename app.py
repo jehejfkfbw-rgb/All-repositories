@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- تنسيق التصميم (CSS) لإخفاء أدوات التحميل المزعجة وجعل الواجهة مثل التطبيقات ---
+# --- تنسيق التصميم (CSS) ---
 st.markdown("""
     <style>
     [data-testid="stSidebar"] { background-color: #f4f4f4; }
@@ -22,7 +22,6 @@ st.markdown("""
     .stButton>button:hover { background-color: #1565C0; }
     .history-item { padding: 10px; background-color: #e0e0e0; border-radius: 5px; margin-bottom: 5px; font-size: 14px; }
     
-    /* إخفاء مؤشر التحميل التقليدي ليظهر بشكل أوتوماتيكي أنيق */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -31,62 +30,70 @@ st.markdown("""
 
 # --- البريد المخصص للمطور التنفيذي ---
 EXECUTIVE_EMAIL = "jehejfkfbw@gmail.com"
+SESSION_FILE = "user_session.txt"
 
-# --- إدارة حالة تسجيل الدخول (تسجيل المرة الواحدة) ---
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-if "user_email" not in st.session_state:
-    st.session_state.user_email = ""
-if "is_executive" not in st.session_state:
-    st.session_state.is_executive = False
+# --- دالة لقراءة الدخول الدائم من الملف ---
+def get_saved_user():
+    if os.path.exists(SESSION_FILE):
+        with open(SESSION_FILE, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    return None
+
+# --- دالة لحفظ الدخول دائماً في الملف ---
+def save_user(email):
+    with open(SESSION_FILE, "w", encoding="utf-8") as f:
+        f.write(email)
+
+# --- دالة لمسح الدخول عند الخروج ---
+def delete_user_session():
+    if os.path.exists(SESSION_FILE):
+        os.remove(SESSION_FILE)
+
+saved_user = get_saved_user()
 
 # ==========================================
-# 🔒 1. شاشة التسجيل (تظهر مرة واحدة فقط)
+# 🔒 1. شاشة التسجيل (تظهر مرة واحدة فقط في العمر)
 # ==========================================
-if not st.session_state.logged_in:
+if not saved_user:
     st.title("⚡ مرحباً بك في Nova AI")
     st.caption("إحدى تطويرات شركة كيفو (Kivo)")
     st.markdown("---")
     
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.subheader("🔑 تسجيل الدخول")
+        st.subheader("🔑 تسجيل الدخول (مرة واحدة فقط)")
         email = st.text_input("البريد الإلكتروني (Email)", placeholder="jehejfkfbw@gmail.com")
         password = st.text_input("كلمة السر (Password)", type="password", placeholder="••••••••")
         
         if st.button("دخول"):
             clean_email = email.strip().lower()
             if clean_email != "" and password.strip() != "":
-                with st.spinner("جاري التحقق وتسجيل الدخول..."):
+                with st.spinner("جاري حفظ بيانات الدخول..."):
+                    save_user(clean_email)
                     time.sleep(0.5)
-                    st.session_state.logged_in = True
-                    st.session_state.user_email = clean_email
-                    
-                    if clean_email == EXECUTIVE_EMAIL.lower():
-                        st.session_state.is_executive = True
-                    else:
-                        st.session_state.is_executive = False
-                        
                     st.rerun()
             else:
                 st.error("يرجى إدخال البريد الإلكتروني وكلمة السر بشكل صحيح.")
 
 # ==========================================
-# 🚀 2. التطبيق الرئيسي (بعد التسجيل)
+# 🚀 2. التطبيق الرئيسي (يدخل أوتوماتيكياً دائماً)
 # ==========================================
 else:
+    user_email = saved_user
+    is_executive = (user_email.strip().lower() == EXECUTIVE_EMAIL.lower())
+
     st.sidebar.title("⚡ نوفا | Nova AI")
     st.sidebar.caption("تطبيق تابع لشركة **كيفو (Kivo)**")
 
     # ترحيب القائمة الجانبية
-    if st.session_state.is_executive:
+    if is_executive:
         st.sidebar.success("👑 المطور التنفيذي: محمد عادل")
     else:
-        st.sidebar.info(f"👤 العميل: {st.session_state.user_email}")
+        st.sidebar.info(f"👤 العميل: {user_email}")
 
     # --- إدارة سجل المحادثات والرسالة الترحيبية الأولى ---
     if "messages" not in st.session_state:
-        if st.session_state.is_executive:
+        if is_executive:
             welcome_msg = "مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو! نظام Nova في خدمتك بالكامل."
         else:
             welcome_msg = "مرحباً بك في تطبيق Nova من شركة كيفو! أنا مساعدك الذكي، كيف يمكنني مساعدتك اليوم؟"
@@ -108,14 +115,14 @@ else:
         st.sidebar.write("لا يوجد سجل حالياً.")
 
     if st.sidebar.button("🗑️ مسح السجل بالكامل"):
-        initial_msg = "مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو!" if st.session_state.is_executive else "مرحباً بك في تطبيق Nova من شركة كيفو!"
+        initial_msg = "مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو!" if is_executive else "مرحباً بك في تطبيق Nova من شركة كيفو!"
         st.session_state.messages = [{"role": "assistant", "content": initial_msg}]
         st.rerun()
 
+    # زر تسجيل الخروج لو أحببت مسح الدخول الدائم
     if st.sidebar.button("🚪 تسجيل الخروج"):
-        st.session_state.logged_in = False
-        st.session_state.user_email = ""
-        st.session_state.is_executive = False
+        delete_user_session()
+        st.session_state.clear()
         st.rerun()
 
     st.sidebar.markdown("---")
@@ -128,7 +135,7 @@ else:
     if app_mode == "💬 الشات الذكي (Nova)":
         st.title("⚡ الذكاء الاصطناعي Nova")
         
-        if st.session_state.is_executive:
+        if is_executive:
             st.success("🌟 أهلاً بك يا أستاذ محمد عادل (المطور التنفيذي لشركة كيفو)")
         else:
             st.markdown("### مرحباً بك في **Nova** من شركة **كيفو (Kivo)**، اسأله أي سؤال وسيجيبك فوراً.")
@@ -143,7 +150,6 @@ else:
                 st.markdown(user_prompt)
                 
             with st.chat_message("assistant"):
-                # تعليمات الذكاء الاصطناعي حول المطور والشركة
                 system_instruction = (
                     "أنت مساعد ذكي اسمك Nova (نوفا) تابع لشركة كيفو (Kivo). "
                     "إذا سألك أي شخص من المطور أو من صنعك أو من طورك، يجب أن تجيب دائماً بوضوح وبصيغة احترافية: "
@@ -155,14 +161,12 @@ else:
                     {"role": "user", "content": user_prompt}
                 ]
 
-                # شاشة التحميل الأوتوماتيكية عند معالجة الرد
                 with st.spinner("Nova يفكر الآن... ⚡"):
                     try:
                         res = str(g4f.ChatCompletion.create(model=g4f.models.default, messages=api_messages))
                     except Exception as e:
                         res = f"حدث خطأ أثناء الاتصال: {e}"
                 
-                # كتابة الكلام تدريجياً كلمة بكلمة تلقائياً
                 message_placeholder = st.empty()
                 streamed_text = ""
                 for word in res.split():
