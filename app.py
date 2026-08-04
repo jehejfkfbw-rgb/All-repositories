@@ -7,18 +7,34 @@ import os
 import requests
 
 # ==========================================
-# ⚙️ 1. إعدادات الهوية والشريط الجانبي التفاعلي
+# ⚙️ 1. إعدادات الهوية وإجبار ظهور زر الشرطتين للموبايل
 # ==========================================
 st.set_page_config(
     page_title="Nova AI Studio - Kivo", 
     page_icon="⚡", 
     layout="wide",
-    initial_sidebar_state="expanded" # يفتح تلقائياً ويوفر أيقونة التحكم بالشرطتين ☰
+    initial_sidebar_state="expanded"
 )
 
-# تصميم وتنسيق عالي الجودة للقائمة الجانبية والأزرار
+# كود CSS لضمان إظهار زر القائمة الجانبية (الشرطتين) وتلوينه ليكون واضحاً على الموبايل
 st.markdown("""
     <style>
+    /* إظهار وتلوين زر القائمة الجانبية (الشرطتين) على الهواتف والشاشات */
+    [data-testid="collapsedControl"] {
+        display: block !important;
+        visibility: visible !important;
+        background-color: #1E88E5 !important;
+        color: white !important;
+        border-radius: 50% !important;
+        padding: 5px !important;
+        margin: 5px !important;
+        z-index: 999999 !important;
+    }
+    
+    [data-testid="collapsedControl"] svg {
+        fill: white !important;
+    }
+
     /* تنسيق القائمة الجانبية */
     [data-testid="stSidebar"] { 
         background-color: #0d1117 !important; 
@@ -102,14 +118,14 @@ if not saved_user:
                 st.error("يرجى إدخال البريد الإلكتروني وكلمة السر بشكل صحيح.")
 
 # ==========================================
-# 🚀 3. منصة Nova AI المجهزة بالشريط الجانبي التفاعلي
+# 🚀 3. منصة Nova AI الرئيسية
 # ==========================================
 else:
     user_email = saved_user
     is_executive = (user_email.strip().lower() == EXECUTIVE_EMAIL.lower())
 
     # ------------------------------------------
-    # ☰ القائمة الجانبية (تفتح وتغلق بالشرطتين/الأيقونة)
+    # ☰ القائمة الجانبية (تفتح وتغلق بالزر البارز)
     # ------------------------------------------
     st.sidebar.title("☰ القائمة والخيارات")
     st.sidebar.caption("تطبيق تابع لشركة **كيفو (Kivo)**")
@@ -129,9 +145,7 @@ else:
 
     st.sidebar.markdown("---")
     
-    # ------------------------------------------
     # 🗂️ أزرار وسجل المحادثات داخل القائمة الجانبية
-    # ------------------------------------------
     st.sidebar.subheader("💬 المحادثات والسجل")
     
     if st.sidebar.button("➕ محادثة جديدة"):
@@ -142,7 +156,6 @@ else:
     st.sidebar.markdown("---")
     st.sidebar.subheader("🗂️ السجل (مسح فردي)")
 
-    # إمكانية مسح المحادثات فردياً بشرطتين/زر ❌ في القائمة
     user_msg_count = 0
     for idx, msg in enumerate(st.session_state.messages):
         if msg["role"] == "user":
@@ -162,9 +175,6 @@ else:
 
     st.sidebar.markdown("---")
 
-    # ------------------------------------------
-    # 🎨 أرشيف الصور والفيديوهات في القائمة
-    # ------------------------------------------
     st.sidebar.subheader("🎨 المعرض السريع")
     if len(st.session_state.generated_media) > 0:
         for media in reversed(st.session_state.generated_media[-2:]):
@@ -193,7 +203,7 @@ else:
     # 🚀 الواجهة الرئيسية لتطبيق Nova
     # ------------------------------------------
     st.title("⚡ نوفا | Nova AI Studio")
-    st.caption("اضغط على أيقونة **(☰ القائمة)** في أعلى اليسار لفتح القائمة الجانبية والسجل.")
+    st.caption("اضغط على زر القائمة (الشرطتين) الملون بالأزرق أعلى الشاشة لفتح السجل والقائمة الجانبية.")
     
     if is_executive:
         st.success("🌟 أهلاً بك يا أستاذ محمد عادل (المطور التنفيذي لشركة كيفو)")
@@ -205,12 +215,10 @@ else:
     # ------------------------------------------
     if app_mode == "💬 الشات الذكي (محادثات + صور + فيديوهات)":
         
-        # عرض المحادثات
         for m in st.session_state.messages:
             with st.chat_message(m["role"]):
                 st.markdown(m["content"])
                 
-                # زر تنزيل الصور المباشر
                 if "image_bytes" in m:
                     st.image(m["image_bytes"], caption="الصورة المتولدة 🎨")
                     st.download_button(
@@ -221,12 +229,10 @@ else:
                         key=f"dl_chat_{m.get('id', time.time())}"
                     )
                 
-                # تنزيل الفيديوهات
                 if "video_url" in m:
                     st.image(m["video_url"], caption="المقطع المتحرك 🎥")
                     st.markdown(f"[📥 تنزيل الفيديو كـ HD]({m['video_url']})")
 
-        # خانة كتابة الأسئلة والطلبات
         if user_prompt := st.chat_input("اكتب سؤالك، أو اطلب (اعمل لي صورة...) أو (اعمل لي فيديو...)..."):
             st.session_state.messages.append({"role": "user", "content": user_prompt})
             with st.chat_message("user"):
