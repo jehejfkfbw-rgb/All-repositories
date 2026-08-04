@@ -5,61 +5,81 @@ import urllib.parse
 import time
 import os
 import requests
+from gtts import gTTS
+import base64
+import io
 
 # ==========================================
-# ⚙️ 1. إعدادات الواجهة الثابتة للموبايل
+# ⚙️ 1. إعدادات الصفحة (شريط جانبي مفتوح وثابت)
 # ==========================================
 st.set_page_config(
     page_title="Nova AI Studio - Kivo", 
     page_icon="⚡", 
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded" # إجبار الشريط الجانبي على الظهور دائماً
 )
 
-# تصميم CSS لضمان عدم وجود أي قوائم جانبية تختفي وثبات الأزرار تماماً
+# كود CSS لتثبيت زر الـ 3 شرط والشريط الجانبي على الموبايل
 st.markdown("""
     <style>
-    /* إلغاء أي شريط جانبي نهائياً لمنع الاختفاء */
-    [data-testid="collapsedControl"] { display: none !important; }
-    [data-testid="stSidebar"] { display: none !important; }
+    /* إظهار زر الثلاث شرط بوضوح على الموبايل */
+    [data-testid="collapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+        background-color: #1E88E5 !important;
+        color: white !important;
+        border-radius: 8px !important;
+        z-index: 999999 !important;
+    }
 
-    /* تنسيق الأزرار الرئيسية */
+    /* تنسيق الشريط الجانبي */
+    [data-testid="stSidebar"] { 
+        background-color: #111827 !important; 
+        color: #ffffff !important;
+    }
+    
+    /* الأزرار */
     .stButton>button { 
         background: linear-gradient(135deg, #1E88E5 0%, #1565C0 100%); 
         color: white !important; 
         border-radius: 8px; 
         width: 100%; 
         border: none; 
-        padding: 10px; 
+        padding: 8px; 
         font-weight: bold;
-        font-size: 14px;
     }
-    .stButton>button:hover { 
-        background: #1565C0 !important;
-    }
-    
-    /* بطاقات السجل */
+
+    /* بطاقات السجل في الشريط الجانبي */
     .history-card {
-        padding: 10px;
-        background-color: #f0f2f6;
-        border-right: 4px solid #1E88E5;
-        border-radius: 6px;
-        margin-bottom: 6px;
-        font-size: 13px;
-        color: #1f2937;
+        padding: 8px;
+        background-color: #1f2937;
+        border-right: 3px solid #1E88E5;
+        border-radius: 4px;
+        margin-bottom: 5px;
+        font-size: 12px;
+        color: #ffffff;
     }
 
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-# --- البريد المخصص للمطور التنفيذي ---
+# --- دالة تحويل النص إلى صوت (Audio Generator) ---
+def text_to_audio(text):
+    try:
+        tts = gTTS(text=text, lang='ar', slow=False)
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        return fp
+    except Exception as e:
+        return None
+
+# --- إدارة التسجيل ---
 EXECUTIVE_EMAIL = "jehejfkfbw@gmail.com"
 SESSION_FILE = "user_session.txt"
 
-# --- إدارة جلسة التسجيل الدائم ---
 def get_saved_user():
     if os.path.exists(SESSION_FILE):
         with open(SESSION_FILE, "r", encoding="utf-8") as f:
@@ -101,77 +121,110 @@ if not saved_user:
                 st.error("يرجى إدخال البريد الإلكتروني وكلمة السر بشكل صحيح.")
 
 # ==========================================
-# 🚀 3. تطبيق Nova AI الرئيسي (لوحة تحكم علوية ثابته)
+# 🚀 3. التطبيق الرئيسي
 # ==========================================
 else:
     user_email = saved_user
     is_executive = (user_email.strip().lower() == EXECUTIVE_EMAIL.lower())
 
-    # --- الترويسة ---
-    st.title("⚡ نوفا | Nova AI Studio")
-    st.caption("تطبيق تابع لشركة **كيفو (Kivo)**")
+    # ------------------------------------------
+    # ☰ الشريط الجانبي (Sidebar)
+    # ------------------------------------------
+    st.sidebar.title("☰ القائمة الرئيسية")
+    st.sidebar.caption("تطبيق تابع لشركة **كيفو (Kivo)**")
 
     if is_executive:
-        st.success("👑 أهلاً بك يا أستاذ محمد عادل (المطور التنفيذي)")
+        st.sidebar.success("👑 المطور التنفيذي: محمد عادل")
     else:
-        st.info(f"👤 المستخدم: {user_email}")
+        st.sidebar.info(f"👤 المستخدم: {user_email}")
 
-    # تهيئة المحادثات والوسائط
+    # تهيئة المحادثات
     if "messages" not in st.session_state:
-        welcome_msg = "مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو! نظام Nova في خدمتك بالكامل." if is_executive else "مرحباً بك في تطبيق Nova من شركة كيفو! اسألني أي سؤال، أو اطلب رسم صورة أو إنتاج فيديو!"
+        welcome_msg = "مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو! نظام Nova في خدمتك بالكامل." if is_executive else "مرحباً بك في تطبيق Nova من شركة كيفو!"
         st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
 
     if "generated_media" not in st.session_state:
         st.session_state.generated_media = []
 
-    st.markdown("---")
-
-    # ==========================================
-    # 🎛️ أزرار التحكم العلوية الثابتة (لا تختفي أبداً)
-    # ==========================================
-    top_col1, top_col2, top_col3 = st.columns([2, 2, 1])
+    st.sidebar.markdown("---")
     
-    with top_col1:
-        if st.button("➕ محادثة جديدة"):
-            initial_msg = "مرحباً بك أيها المطور التنفيذي محمد عادل!" if is_executive else "أهلاً بك مجدداً في Nova AI!"
-            st.session_state.messages = [{"role": "assistant", "content": initial_msg}]
-            st.rerun()
+    # خيارات التحكم والمحادثات في السايدبار
+    if st.sidebar.button("➕ محادثة جديدة"):
+        initial_msg = "مرحباً بك أيها المطور التنفيذي محمد عادل!" if is_executive else "أهلاً بك مجدداً في Nova AI!"
+        st.session_state.messages = [{"role": "assistant", "content": initial_msg}]
+        st.rerun()
 
-    with top_col2:
-        if st.button("🗑️ مسح السجل بالكامل"):
-            initial_msg = "مرحباً بك أيها المطور التنفيذي محمد عادل!" if is_executive else "مرحباً بك في Nova AI!"
-            st.session_state.messages = [{"role": "assistant", "content": initial_msg}]
-            st.rerun()
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🗂️ السجل (حذف فردي)")
 
-    with top_col3:
-        if st.button("🚪 خروج"):
-            delete_user_session()
-            st.session_state.clear()
-            st.rerun()
+    user_msg_count = 0
+    for idx, msg in enumerate(st.session_state.messages):
+        if msg["role"] == "user":
+            user_msg_count += 1
+            col_txt, col_del = st.sidebar.columns([4, 1])
+            with col_txt:
+                st.markdown(f'<div class="history-card">💬 {msg["content"][:18]}...</div>', unsafe_allow_html=True)
+            with col_del:
+                if st.button("❌", key=f"del_msg_side_{idx}"):
+                    del st.session_state.messages[idx]
+                    if idx < len(st.session_state.messages) and st.session_state.messages[idx]["role"] == "assistant":
+                        del st.session_state.messages[idx]
+                    st.rerun()
 
-    # اختيار القسم من قائمة علوية واضحة
-    app_mode = st.selectbox("📌 اختر القسم المطلوب:", [
-        "💬 الشات الذكي (محادثات + صور + فيديوهات)", 
-        "🗂️ السجل والأرشيف (مسح فردي للأسئلة ❌)",
+    if user_msg_count == 0:
+        st.sidebar.caption("لا يوجد سجل محادثات.")
+
+    st.sidebar.markdown("---")
+
+    if st.sidebar.button("🚪 تسجيل الخروج"):
+        delete_user_session()
+        st.session_state.clear()
+        st.rerun()
+
+    st.sidebar.markdown("---")
+
+    # اختيار الأقسام من الشريط الجانبي
+    app_mode = st.sidebar.radio("📌 التنقل بين الأقسام:", [
+        "💬 الشات الذكي (محادثات صوتیة + صور + فيديوهات)", 
         "🎨 استوديو توليد الصور والفيديوهات", 
         "🕌 مواقيت الصلاة والعداد التنازلي"
     ])
 
+    # ------------------------------------------
+    # 🚀 الشاشة الرئيسية
+    # ------------------------------------------
+    st.title("⚡ نوفا | Nova AI Studio")
+    
+    if is_executive:
+        st.success("👑 أهلاً بك يا أستاذ محمد عادل (المطور التنفيذي)")
+
     st.markdown("---")
 
     # ------------------------------------------
-    # 💬 1. الشات الذكي الرئيسي
+    # 💬 1. الشات الرئيسي مع ميزة الصوت
     # ------------------------------------------
-    if app_mode == "💬 الشات الذكي (محادثات + صور + فيديوهات)":
+    if app_mode == "💬 الشات الذكي (محادثات صوتیة + صور + فيديوهات)":
         
-        for m in st.session_state.messages:
+        # عرض جميع الرسائل مع مشغل الصوت للردود
+        for idx, m in enumerate(st.session_state.messages):
             with st.chat_message(m["role"]):
                 st.markdown(m["content"])
                 
+                # إذا كانت الرسالة من المساعد الذكي، نضع خيار تشغيل الصوت
+                if m["role"] == "assistant":
+                    if "audio_bytes" in m:
+                        st.audio(m["audio_bytes"], format="audio/mp3")
+                    else:
+                        if st.button("🔊 استماع للرد", key=f"tts_btn_{idx}"):
+                            audio_data = text_to_audio(m["content"])
+                            if audio_data:
+                                m["audio_bytes"] = audio_data
+                                st.audio(audio_data, format="audio/mp3")
+
                 if "image_bytes" in m:
                     st.image(m["image_bytes"], caption="الصورة المتولدة 🎨")
                     st.download_button(
-                        label="📥 تنزيل الصورة إلى جهازك",
+                        label="📥 تنزيل الصورة",
                         data=m["image_bytes"],
                         file_name=f"nova_{int(time.time())}.png",
                         mime="image/png",
@@ -182,6 +235,7 @@ else:
                     st.image(m["video_url"], caption="المقطع المتحرك 🎥")
                     st.markdown(f"[📥 تنزيل الفيديو]({m['video_url']})")
 
+        # إدخال السؤال
         if user_prompt := st.chat_input("اكتب سؤالك، أو اطلب (اعمل لي صورة...) أو (اعمل لي فيديو...)..."):
             st.session_state.messages.append({"role": "user", "content": user_prompt})
             with st.chat_message("user"):
@@ -209,7 +263,7 @@ else:
                                 
                                 msg_id = time.time()
                                 st.download_button(
-                                    label="📥 تنزيل الصورة الآن",
+                                    label="📥 تنزيل الصورة",
                                     data=img_bytes,
                                     file_name=f"nova_{int(msg_id)}.png",
                                     mime="image/png",
@@ -222,12 +276,12 @@ else:
                             st.error(f"خطأ أثناء التوليد: {e}")
 
                 elif is_video_req:
-                    with st.spinner("⚡ Nova يقوم بتوليد مقطع الفيديو..."):
+                    with st.spinner("⚡ Nova يقوم بتوليد الفيديو..."):
                         video_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(user_prompt)}?width=1024&height=1024&model=flux&nologo=true"
                         txt = "تم توليد المقطع المتحرك بنجاح! 🎥"
                         st.markdown(txt)
                         st.image(video_url, caption="معاينة الفيديو")
-                        st.markdown(f"[📥 تنزيل الفيديو كـ HD]({video_url})")
+                        st.markdown(f"[📥 تنزيل الفيديو]({video_url})")
                         
                         st.session_state.messages.append({"role": "assistant", "content": txt, "video_url": video_url})
                         st.session_state.generated_media.append({"type": "video", "prompt": user_prompt, "url": video_url})
@@ -250,34 +304,17 @@ else:
                             res_text = f"حدث خطأ أثناء الاتصال: {e}"
                     
                     st.markdown(res_text)
-                    st.session_state.messages.append({"role": "assistant", "content": res_text})
+                    
+                    # تحويل النص المستلم إلى صوت وتوليد مشغل صوت تلقائياً
+                    audio_fp = text_to_audio(res_text)
+                    if audio_fp:
+                        st.audio(audio_fp, format="audio/mp3")
+                        st.session_state.messages.append({"role": "assistant", "content": res_text, "audio_bytes": audio_fp})
+                    else:
+                        st.session_state.messages.append({"role": "assistant", "content": res_text})
 
     # ------------------------------------------
-    # 🗂️ 2. قسم السجل والمسح الفردي (مستقل وثابت)
-    # ------------------------------------------
-    elif app_mode == "🗂️ السجل والأرشيف (مسح فردي للأسئلة ❌)":
-        st.subheader("🗂️ سجل الأسئلة والمحادثات السابقة")
-        st.caption("يمكنك مسح أي سؤال مفرد من هنا بضغطة زر ❌:")
-        
-        user_msg_count = 0
-        for idx, msg in enumerate(st.session_state.messages):
-            if msg["role"] == "user":
-                user_msg_count += 1
-                col_txt, col_del = st.columns([5, 1])
-                with col_txt:
-                    st.markdown(f'<div class="history-card">💬 {msg["content"]}</div>', unsafe_allow_html=True)
-                with col_del:
-                    if st.button("❌ مسح", key=f"del_msg_direct_{idx}"):
-                        del st.session_state.messages[idx]
-                        if idx < len(st.session_state.messages) and st.session_state.messages[idx]["role"] == "assistant":
-                            del st.session_state.messages[idx]
-                        st.rerun()
-
-        if user_msg_count == 0:
-            st.info("لا يوجد أسئلة في السجل حالياً.")
-
-    # ------------------------------------------
-    # 🎨 3. استوديو الوسائط
+    # 🎨 2. قسم استوديو الوسائط
     # ------------------------------------------
     elif app_mode == "🎨 استوديو توليد الصور والفيديوهات":
         st.title("🎨 استوديو الوسائط - Nova Studio")
@@ -305,7 +342,7 @@ else:
                     st.session_state.generated_media.append({"type": "video", "prompt": p_vid, "url": vid_url})
 
     # ------------------------------------------
-    # 🕌 4. مواقيت الصلاة
+    # 🕌 3. مواقيت الصلاة
     # ------------------------------------------
     elif app_mode == "🕌 مواقيت الصلاة والعداد التنازلي":
         st.title("🕌 مواقيت الصلاة والعداد التنازلي")
