@@ -6,6 +6,7 @@ import os
 import time
 import urllib.parse
 from g4f.client import Client
+from g4f.Provider import Blackbox, DuckDuckGo, PollinationsAI
 from gtts import gTTS
 from PIL import Image
 import requests
@@ -69,7 +70,6 @@ CODES_FILE = "vip_codes.json"
 def load_vip_codes():
   """تحميل الأكواد وبيانات انتهاء صلاحيتها"""
   if not os.path.exists(CODES_FILE):
-    # إنشاء أكواد افتراضية لمدة 30 يوماً
     default_expiry = (datetime.now() + timedelta(days=30)).strftime(
         "%Y-%m-%d %H:%M:%S"
     )
@@ -127,19 +127,21 @@ def validate_vip_code(code_name):
 
 
 # ==========================================
-# 🤖 5. محرك الذكاء الاصطناعي
+# 🤖 5. محرك الذكاء الاصطناعي القوي والمتعدد السيرفرات
 # ==========================================
 def ask_nova_ai(prompt, is_vip=False):
   sys_prompt = (
       "أنت مساعد ذكي ومتطور اسمه Nova تابع لشركة Kivo والمطور التنفيذي هو"
       " محمد عادل. أجب بأسلوب مفصل، شامل، وغني بالمعلومات والملاحظات الدقيقة"
-      " دون اختصار:"
+      " دون اختصار."
   )
+  client = Client()
 
+  # 1. المحاولة الأولى: سيرفر Blackbox (سريع وممتاز جداً)
   try:
-    client = Client()
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o",
+        provider=Blackbox,
         messages=[
             {"role": "system", "content": sys_prompt},
             {"role": "user", "content": prompt},
@@ -156,16 +158,49 @@ def ask_nova_ai(prompt, is_vip=False):
   except Exception:
     pass
 
+  # 2. المحاولة الثانية: سيرفر DuckDuckGo
+  try:
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        provider=DuckDuckGo,
+        messages=[
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": prompt},
+        ],
+    )
+    res_text = response.choices[0].message.content
+    if res_text and len(res_text.strip()) > 5:
+      return res_text.strip()
+  except Exception:
+    pass
+
+  # 3. المحاولة الثالثة: Pollinations المباشر
+  try:
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        provider=PollinationsAI,
+        messages=[
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": prompt},
+        ],
+    )
+    res_text = response.choices[0].message.content
+    if res_text and len(res_text.strip()) > 5:
+      return res_text.strip()
+  except Exception:
+    pass
+
+  # 4. المحاولة الرابعة الاحتياطية المباشرة مع Pollinations API
   try:
     encoded_p = urllib.parse.quote(f"{sys_prompt}\nالسؤال: {prompt}")
     url = f"https://text.pollinations.ai/{encoded_p}?cache=false"
-    res = requests.get(url, timeout=10)
+    res = requests.get(url, timeout=12)
     if res.status_code == 200 and len(res.text.strip()) > 5:
       return res.text.strip()
   except Exception:
     pass
 
-  return "حدث خطأ مؤقت في الاتصال، يرجى إعادة إرسال السؤال مرة أخرى وسيتم الرد فوراً."
+  return "حدث ضغط مفاجئ على السيرفرات، يرجى إعادة إرسال سؤالك وسيجيب النظام فوراً."
 
 
 # ==========================================
@@ -260,7 +295,7 @@ else:
 
   st.sidebar.markdown("---")
 
-  # 🛠️ لوحة تحكم المطور الفائقة (إضافة + تحديد الأيام + حذف الأكواد)
+  # 🛠️ لوحة تحكم المطور (إضافة + تحديد أيام + حذف الأكواد)
   if is_executive:
     st.sidebar.subheader("🛠️ لوحة تحكم الاشتراك و الأكواد")
     new_code = st.sidebar.text_input("أنشئ كود VIP جديد:")
@@ -285,7 +320,7 @@ else:
     else:
       for code_key, info in list(all_codes.items()):
         col_code, col_btn = st.sidebar.columns([3, 1])
-        col_code.caption(f"🔑 `{code_key}`\n⏳ يفيض: {info['expiry'][:10]}")
+        col_code.caption(f"🔑 `{code_key}`\n⏳ ينتهي: {info['expiry'][:10]}")
         if col_btn.button("❌", key=f"del_{code_key}"):
           delete_vip_code(code_key)
           st.sidebar.warning(f"تم إلغاء الكود: {code_key}")
@@ -297,7 +332,7 @@ else:
   # ⚙️ قسم اختيار السيرفر والاشتراك
   st.sidebar.subheader("🌐 نوع السيرفر")
 
-  # التحقق من صلاحية الكود الحالي إذا كان معفلاً
+  # التحقق التلقائي من صلاحية الكود المفعل
   if st.session_state["vip_activated"]:
     is_valid, msg = validate_vip_code(st.session_state["active_code"])
     if not is_valid:
@@ -342,7 +377,7 @@ else:
 
   st.sidebar.markdown("---")
 
-  # استايل VIP
+  # تصميم واجهة VIP
   if st.session_state["vip_activated"]:
     st.markdown(
         """
