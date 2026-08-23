@@ -5,12 +5,18 @@ import json
 import os
 import time
 import urllib.parse
-from g4f.client import Client
-from g4f.Provider import Blackbox, DuckDuckGo, PollinationsAI
 from gtts import gTTS
 from PIL import Image
 import requests
 import streamlit as st
+
+# استدعاء g4f بأسلوب آمن
+try:
+  from g4f.client import Client
+
+  HAS_G4F = True
+except ImportError:
+  HAS_G4F = False
 
 # ==========================================
 # ⚙️ 1. إعدادات الصفحة والجرافيك
@@ -68,7 +74,6 @@ CODES_FILE = "vip_codes.json"
 
 
 def load_vip_codes():
-  """تحميل الأكواد وبيانات انتهاء صلاحيتها"""
   if not os.path.exists(CODES_FILE):
     default_expiry = (datetime.now() + timedelta(days=30)).strftime(
         "%Y-%m-%d %H:%M:%S"
@@ -88,13 +93,11 @@ def load_vip_codes():
 
 
 def save_vip_codes(codes_dict):
-  """حفظ الأكواد في ملف JSON"""
   with open(CODES_FILE, "w", encoding="utf-8") as f:
     json.dump(codes_dict, f, ensure_ascii=False, indent=4)
 
 
 def add_vip_code(code_name, days=30):
-  """إضافة كود جديد مع مدة محددة بالأيام"""
   codes = load_vip_codes()
   expiry_date = (datetime.now() + timedelta(days=days)).strftime(
       "%Y-%m-%d %H:%M:%S"
@@ -104,7 +107,6 @@ def add_vip_code(code_name, days=30):
 
 
 def delete_vip_code(code_name):
-  """حذف كود وإلغاؤه فوراً"""
   codes = load_vip_codes()
   if code_name in codes:
     del codes[code_name]
@@ -112,7 +114,6 @@ def delete_vip_code(code_name):
 
 
 def validate_vip_code(code_name):
-  """التحقق من صحة الكود وعدم انتهاء صلاحيته"""
   codes = load_vip_codes()
   if code_name not in codes:
     return False, "❌ الكود غير صحيح أو تم إلغاؤه من المطور."
@@ -127,80 +128,48 @@ def validate_vip_code(code_name):
 
 
 # ==========================================
-# 🤖 5. محرك الذكاء الاصطناعي القوي والمتعدد السيرفرات
+# 🤖 5. محرك الذكاء الاصطناعي الآمن
 # ==========================================
 def ask_nova_ai(prompt, is_vip=False):
   sys_prompt = (
       "أنت مساعد ذكي ومتطور اسمه Nova تابع لشركة Kivo والمطور التنفيذي هو"
-      " محمد عادل. أجب بأسلوب مفصل، شامل، وغني بالمعلومات والملاحظات الدقيقة"
-      " دون اختصار."
+      " محمد عادل. أجب بأسلوب مفصل وشامل."
   )
-  client = Client()
 
-  # 1. المحاولة الأولى: سيرفر Blackbox (سريع وممتاز جداً)
-  try:
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        provider=Blackbox,
-        messages=[
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": prompt},
-        ],
-    )
-    res_text = response.choices[0].message.content
-    if res_text and len(res_text.strip()) > 5:
-      prefix = (
-          "⚡ **[سيرفر VIP الفائق - استجابة فائقة السرعة]**\n\n"
-          if is_vip
-          else ""
+  # المحاولة الأولى عبر g4f إذا كانت مثبتة
+  if HAS_G4F:
+    try:
+      client = Client()
+      response = client.chat.completions.create(
+          model="gpt-3.5-turbo",
+          messages=[
+              {"role": "system", "content": sys_prompt},
+              {"role": "user", "content": prompt},
+          ],
       )
-      return f"{prefix}{res_text.strip()}"
-  except Exception:
-    pass
+      res_text = response.choices[0].message.content
+      if res_text and len(res_text.strip()) > 5:
+        prefix = (
+            "⚡ **[سيرفر VIP الفائق - استجابة فائقة السرعة]**\n\n"
+            if is_vip
+            else ""
+        )
+        return f"{prefix}{res_text.strip()}"
+    except Exception:
+      pass
 
-  # 2. المحاولة الثانية: سيرفر DuckDuckGo
-  try:
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        provider=DuckDuckGo,
-        messages=[
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": prompt},
-        ],
-    )
-    res_text = response.choices[0].message.content
-    if res_text and len(res_text.strip()) > 5:
-      return res_text.strip()
-  except Exception:
-    pass
-
-  # 3. المحاولة الثالثة: Pollinations المباشر
-  try:
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        provider=PollinationsAI,
-        messages=[
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": prompt},
-        ],
-    )
-    res_text = response.choices[0].message.content
-    if res_text and len(res_text.strip()) > 5:
-      return res_text.strip()
-  except Exception:
-    pass
-
-  # 4. المحاولة الرابعة الاحتياطية المباشرة مع Pollinations API
+  # المحاولة الاحتياطية المباشرة (مضمونة ومجانية ولا تتطلب مكتبات خارجية)
   try:
     encoded_p = urllib.parse.quote(f"{sys_prompt}\nالسؤال: {prompt}")
     url = f"https://text.pollinations.ai/{encoded_p}?cache=false"
     res = requests.get(url, timeout=12)
     if res.status_code == 200 and len(res.text.strip()) > 5:
-      return res.text.strip()
+      prefix = "👑 **[استجابة سيرفر VIP]**\n\n" if is_vip else ""
+      return f"{prefix}{res.text.strip()}"
   except Exception:
     pass
 
-  return "حدث ضغط مفاجئ على السيرفرات، يرجى إعادة إرسال سؤالك وسيجيب النظام فوراً."
+  return "حدث ضغط مفاجئ على السيرفرات، يرجى إعادة إرسال السؤال وسيتم الرد فوراً."
 
 
 # ==========================================
@@ -295,7 +264,6 @@ else:
 
   st.sidebar.markdown("---")
 
-  # 🛠️ لوحة تحكم المطور (إضافة + تحديد أيام + حذف الأكواد)
   if is_executive:
     st.sidebar.subheader("🛠️ لوحة تحكم الاشتراك و الأكواد")
     new_code = st.sidebar.text_input("أنشئ كود VIP جديد:")
@@ -329,10 +297,8 @@ else:
 
     st.sidebar.markdown("---")
 
-  # ⚙️ قسم اختيار السيرفر والاشتراك
   st.sidebar.subheader("🌐 نوع السيرفر")
 
-  # التحقق التلقائي من صلاحية الكود المفعل
   if st.session_state["vip_activated"]:
     is_valid, msg = validate_vip_code(st.session_state["active_code"])
     if not is_valid:
@@ -377,7 +343,6 @@ else:
 
   st.sidebar.markdown("---")
 
-  # تصميم واجهة VIP
   if st.session_state["vip_activated"]:
     st.markdown(
         """
