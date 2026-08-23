@@ -1,8 +1,8 @@
 import io
 import json
 import os
+import sqlite3
 import time
-import urllib.parse
 from datetime import datetime, timedelta
 from gtts import gTTS
 from PIL import Image
@@ -13,40 +13,281 @@ import streamlit as st
 # ⚙️ 1. إعدادات الصفحة والجرافيك
 # ==========================================
 st.set_page_config(
-    page_title="Nova AI Studio - Kivo VIP 2026",
+    page_title="Nova AI Studio - Kivo Local DB 2026",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # ==========================================
-# 📲 2. البيانات الثابتة وإشعارات الواتساب
+# 📲 2. البيانات الثابتة والإعدادات
 # ==========================================
 MY_PHONE = "201102464297"
 ORANGE_CASH_NUMBER = "01213783090"
-MY_API_KEY = "2586712"
 EXECUTIVE_EMAIL = "jehejfkfbw@gmail.com"
+DB_FILE = "nova_local_database.db"
+
+# ==========================================
+# 🗄️ 3. محرك قاعدة البيانات المحلية الضخمة (SQLite)
+# ==========================================
+def init_and_seed_db():
+  """إنشاء وتعبئة قاعدة البيانات المحلية بجميع المعلومات الشاملة"""
+  conn = sqlite3.connect(DB_FILE)
+  c = conn.cursor()
+
+  c.execute("""
+        CREATE TABLE IF NOT EXISTS local_knowledge (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT,
+            keyword TEXT,
+            response TEXT
+        )
+    """)
+
+  # التأكد من عدم تكرار التعبئة
+  c.execute("SELECT COUNT(*) FROM local_knowledge")
+  if c.fetchone()[0] == 0:
+    seed_data = [
+        # قسم المطور والشركة
+        (
+            "المطور والشركة",
+            "من انت",
+            (
+                "أنا نظام Nova AI Studio الذكي والمطور بالكامل لشركة Kivo."
+                " المطور التنفيذي والمسؤول الأول عن النظام هو محمد عادل."
+            ),
+        ),
+        (
+            "المطور والشركة",
+            "من أنت",
+            (
+                "أنا نظام Nova AI Studio الذكي والمطور بالكامل لشركة Kivo."
+                " المطور التنفيذي والمسؤول الأول عن النظام هو محمد عادل."
+            ),
+        ),
+        (
+            "المطور والشركة",
+            "مين المطور",
+            (
+                "المطور التنفيذي للنظام هو الباشمهندس محمد عادل، وهو القائم"
+                " على تطوير وتحديث كافة خوارزميات Nova تحت مظلة شركة Kivo."
+            ),
+        ),
+        (
+            "المطور والشركة",
+            "محمد عادل",
+            (
+                "محمد عادل هو المطور التنفيذي والمؤسس لنظام Nova AI وشركة"
+                " Kivo للحلول البرمجية والتقنية."
+            ),
+        ),
+        (
+            "المطور والشركة",
+            "كيفو",
+            (
+                "شركة Kivo هي الشركة الناشئة المبتكرة لنظام Nova AI وتقدم"
+                " حلول البرمجة والذكاء الاصطناعي وتطوير التطبيقات."
+            ),
+        ),
+        (
+            "المطور والشركة",
+            "kivo",
+            (
+                "شركة Kivo هي الشركة الناشئة المبتكرة لنظام Nova AI وتقدم"
+                " حلول البرمجة والذكاء الاصطناعي وتطوير التطبيقات."
+            ),
+        ),
+        (
+            "المطور والشركة",
+            "نوفا",
+            (
+                "نوفا (Nova) هو المساعد الذكي المدمج القائم على قاعدة بيانات"
+                " محليّة سريعة وشاملة لكل الحلول التقنية."
+            ),
+        ),
+        # قسم الاشتراكات و VIP
+        (
+            "الاشتراكات والخدمات",
+            "vip",
+            (
+                "يمكنك تفعيل سيرفر VIP المباشر عبر تحويل قيمة الاشتراك على"
+                " محفظة أورنج كاش برقم 01213783090 ثم إرسال الإيصال للمطور محمد"
+                " عادل لتلقي كود التفعيل."
+            ),
+        ),
+        (
+            "الاشتراكات والخدمات",
+            "اشتراك",
+            (
+                "للاشتراك في الخدمات المتقدمة، يرجى التواصل مع الدعم الفني أو"
+                " تحويل الاشتراك عبر أورنج كاش برقم 01213783090."
+            ),
+        ),
+        (
+            "الاشتراكات والخدمات",
+            "اورنج كاش",
+            (
+                "رقم محفظة أورنج كاش المعتمد لتحويل الاشتراكات والخدمات هو:"
+                " 01213783090."
+            ),
+        ),
+        (
+            "الاشتراكات والخدمات",
+            "أورنج كاش",
+            (
+                "رقم محفظة أورنج كاش المعتمد لتحويل الاشتراكات والخدمات هو:"
+                " 01213783090."
+            ),
+        ),
+        (
+            "الاشتراكات والخدمات",
+            "تفعيل",
+            (
+                "لتفعيل كود VIP، قم بكتابة الكود في القائمة الجانبية واضغط على"
+                " زر 'تأكيد وتفعيل VIP'."
+            ),
+        ),
+        # قسم الدعم والتواصل
+        (
+            "الدعم الفني",
+            "تواصل",
+            (
+                "يمكنك التواصل المباشر مع المطور التنفيذي محمد عادل عبر"
+                " الواتساب على الرقم: +201102464297."
+            ),
+        ),
+        (
+            "الدعم الفني",
+            "واتساب",
+            (
+                "رقم الواتساب الرسمي المباشر للمطور محمد عادل للدعم الفني هو:"
+                " +201102464297."
+            ),
+        ),
+        (
+            "الدعم الفني",
+            "دعم",
+            (
+                "فريق الدعم الفني متواجد لمساعدتك. تواصل مباشرة مع المطور محمد"
+                " عادل على +201102464297."
+            ),
+        ),
+        (
+            "الدعم الفني",
+            "رقم",
+            (
+                "الأرقام الرسمية: أورنج كاش للتحويل (01213783090) | واتساب"
+                " التواصل (+201102464297)."
+            ),
+        ),
+        # قسم البرمجة والحلول التقنية 2026
+        (
+            "البرمجة والتقنية",
+            "python",
+            (
+                "بايثون (Python) هي لغة البرمجة الأساسية لبناء هذا التطبيق،"
+                " حيث نعتمد على إصدارات متقدمة مع مكتبات Streamlit وSQLite."
+            ),
+        ),
+        (
+            "البرمجة والتقنية",
+            "streamlit",
+            (
+                "إطار عمل Streamlit يتيح بناء واجهات تفاعلية سريعة ومستقرة"
+                " لتطبيقات الذكاء الاصطناعي بدعم كامل للغة العربية."
+            ),
+        ),
+        (
+            "البرمجة والتقنية",
+            "قاعدة بيانات",
+            (
+                "يعتمد هذا التطبيق على قاعدة بيانات محليّة من نوع SQLite مخزنة"
+                " داخل المشروع لضمان استجابة لحظية واستقرار 100% بدون انقطاع."
+            ),
+        ),
+        (
+            "البرمجة والتقنية",
+            "كود",
+            (
+                "جميع الأكواد في هذا التطبيق مصممة ومدمجة بنظام الملف الواحد"
+                " لتسهيل الاستضافة والتحديث المستمر."
+            ),
+        ),
+        (
+            "البرمجة والتقنية",
+            "حل مشكلة",
+            (
+                "لحل مشكلات توقف السيرفرات المجانية، تم الاستغناء تماماً عن"
+                " المكتبات الخارجية والاعتماد الكامل على المحرك المحلي."
+            ),
+        ),
+        # قسم أسئلة عامة برمجية
+        (
+            "معلومات عامة",
+            "سلام",
+            "وعليكم السلام ورحمة الله وبركاته! كيف يمكنني مساعدتك اليوم؟",
+        ),
+        (
+            "معلومات عامة",
+            "مرحبا",
+            "أهلاً بك في منصة Nova AI Studio! أنا جاهز لإجابة جميع استفساراتك.",
+        ),
+        (
+            "معلومات عامة",
+            "ازيك",
+            "الحمد لله! جاهز ومستعد لمساعدتك في أي وقت.",
+        ),
+        (
+            "معلومات عامة",
+            "شكرا",
+            "العفو! في خدمتك دائماً.",
+        ),
+    ]
+    c.executemany(
+        "INSERT INTO local_knowledge (category, keyword, response) VALUES (?,"
+        " ?, ?)",
+        seed_data,
+    )
+    conn.commit()
+
+  conn.close()
 
 
-def notify_admin_whatsapp(user_email, search_query, action_type="بحث / سؤال"):
-  current_time = datetime.now().strftime("%Y-%m-%d %I:%M %p")
-  msg = f"""🚨 *نشاط جديد على تطبيق Nova 2026*
-👤 *المستخدم:* {user_email}
-⏰ *الوقت:* {current_time}
-📌 *نوع النشاط:* {action_type}
-💬 *المحتوى:* {search_query}"""
+init_and_seed_db()
 
-  encoded_msg = urllib.parse.quote(msg)
-  url = f"https://api.callmebot.com/whatsapp.php?phone={MY_PHONE}&text={encoded_msg}&apikey={MY_API_KEY}"
 
-  try:
-    requests.get(url, timeout=5)
-  except Exception:
-    pass
+def query_local_db(user_query):
+  """البحث الفوري المباشر داخل قاعدة البيانات المحلية SQLite"""
+  conn = sqlite3.connect(DB_FILE)
+  c = conn.cursor()
+
+  query_clean = user_query.strip().lower()
+
+  # بحث مباشر بدقة التطابق
+  c.execute(
+      "SELECT response FROM local_knowledge WHERE LOWER(keyword) = ?",
+      (query_clean,),
+  )
+  row = c.fetchone()
+
+  if not row:
+    # بحث جزئي بالكلمات المفتاحية
+    c.execute(
+        "SELECT response FROM local_knowledge WHERE ? LIKE '%' ||"
+        " LOWER(keyword) || '%'",
+        (query_clean,),
+    )
+    row = c.fetchone()
+
+  conn.close()
+
+  if row:
+    return row[0]
+  return None
 
 
 # ==========================================
-# 🔊 3. تحويل النص إلى صوت
+# 🔊 4. تحويل النص إلى صوت
 # ==========================================
 def text_to_audio(text):
   try:
@@ -60,7 +301,7 @@ def text_to_audio(text):
 
 
 # ==========================================
-# 🔑 4. إدارة أكواد VIP المتقدمة (JSON محلي)
+# 🔑 5. إدارة أكواد VIP المتقدمة (JSON محلي)
 # ==========================================
 CODES_FILE = "vip_codes.json"
 
@@ -108,7 +349,7 @@ def delete_vip_code(code_name):
 def validate_vip_code(code_name):
   codes = load_vip_codes()
   if code_name not in codes:
-    return False, "❌ الكود غير صحيح أو تم إلغاؤه من المطور."
+    return False, "❌ الكود غير صحيح أو تم إلغاؤه."
 
   expiry_str = codes[code_name]["expiry"]
   expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d %H:%M:%S")
@@ -120,110 +361,22 @@ def validate_vip_code(code_name):
 
 
 # ==========================================
-# 🗄️ 5. قاعدة البيانات الضخمة المدمجة داخل الكود (تحديثات 2026)
-# ==========================================
-EMBEDDED_KNOWLEDGE_BASE = [
-    {
-        "keywords": ["من انت", "من أنت", "مين المطور", "كيفو", "kivo", "نوفا"],
-        "content": (
-            "أنا نظام Nova AI Studio الذكي والمطور خصيصاً لشركة Kivo. المطور"
-            " التنفيذي والمسؤول عن النظام هو **محمد عادل**."
-        ),
-    },
-    {
-        "keywords": ["vip", "اشتراك", "اورنج كاش", "تفعيل", "كود"],
-        "content": (
-            "يمكنك تفعيل اشتراك VIP للحصول على سرعة فائقة بدون انقطاع عن طريق"
-            " تحويل المبلغ عبر **أورنج كاش (Orange Cash)** للرقم: `01213783090`"
-            " ثم التواصل مع المطور محمد عادل لتلقي الكود."
-        ),
-    },
-    {
-        "keywords": ["تواصل", "واتساب", "دعم", "رقم"],
-        "content": (
-            "يمكنك التواصل المباشر مع المطور التنفيذي **محمد عادل** عبر"
-            " الواتساب على الرقم: `+201102464297`."
-        ),
-    },
-    {
-        "keywords": ["تحديثات 2026", "اخبار 2026", "الذكاء الاصطناعي 2026"],
-        "content": (
-            "شهد عام 2026 طفرة في نماذج الذكاء الاصطناعي مع الاعتماد على النماذج"
-            " المدمجة وسريعة الاستجابة (Edge AI)، إلى جانب استقرار نماذج GPT-4o"
-            " وClaude 3.5 وتوسع تطبيقات Streamlit في إدارة الشبكات والذكاء"
-            " الاصطناعي."
-        ),
-    },
-    {
-        "keywords": [
-            "python 2026",
-            "streamlitt 2026",
-            "برمجة",
-            "كود",
-            "استضافة",
-            "حل مشكلة",
-        ],
-        "content": (
-            "لحل مشاكل الاستضافة على Streamlit Cloud في 2026، يُنصح بتفادي"
-            " المكتبات التي تعتمد على scraping وتجاوز القيود (مثل g4f) واستبدالها"
-            " بـ REST APIs المباشرة السريعة لضمان عدم حدوث ImportError."
-        ),
-    },
-]
-
-
-def search_embedded_db(user_query):
-  query_clean = user_query.lower().strip()
-  for item in EMBEDDED_KNOWLEDGE_BASE:
-    for kw in item["keywords"]:
-      if kw in query_clean:
-        return item["content"]
-  return None
-
-
-# ==========================================
-# 🤖 6. محرك الذكاء الاصطناعي المدمج والمستقر 100%
+# 🤖 6. محرك الذكاء الاصطناعي المحلي
 # ==========================================
 def ask_nova_ai(prompt, is_vip=False):
-  # أولاً: البحث في قاعدة البيانات المدمجة
-  db_res = search_embedded_db(prompt)
-  if db_res:
-    prefix = (
-        "⚡ **[استجابة من قاعدة بيانات Nova المدمجة]**\n\n" if is_vip else ""
-    )
-    return f"{prefix}{db_res}"
+  # 1. البحث الفوري داخل قاعدة البيانات المحلية SQLite
+  local_res = query_local_db(prompt)
+  if local_res:
+    prefix = "⚡ **[إجابة سريعة من قاعدة البيانات المحلية]**\n\n" if is_vip else ""
+    return f"{prefix}{local_res}"
 
-  # ثانياً: الاتصال بالسيرفرات المباشرة بدون مكتبات خارجية تسبب أخطاء
-  sys_prompt = "أنت مساعد ذكي اسمه Nova تابع لشركة Kivo والمطور التنفيذي هو محمد عادل."
-
-  # سيرفر Pollinations المباشر
-  try:
-    full_p = f"{sys_prompt}\nالسؤال: {prompt}"
-    encoded = urllib.parse.quote(full_p)
-    url = f"https://text.pollinations.ai/{encoded}?model=openai&cache=false"
-
-    res = requests.get(url, timeout=10)
-    if res.status_code == 200 and len(res.text.strip()) > 3:
-      prefix = "⚡ **[سيرفر VIP السريع]**\n\n" if is_vip else ""
-      return f"{prefix}{res.text.strip()}"
-  except Exception:
-    pass
-
-  # سيرفر احتياطي ثاني المباشر
-  try:
-    encoded_simple = urllib.parse.quote(prompt)
-    url2 = f"https://text.pollinations.ai/{encoded_simple}?cache=false"
-    res2 = requests.get(url2, timeout=10)
-    if res2.status_code == 200 and len(res2.text.strip()) > 3:
-      return res2.text.strip()
-  except Exception:
-    pass
-
-  return "⚠️ حدث تذبذب بسيط في الاتصال بالسيرفرات، يرجى إعادة إرسال السؤال وسيجيب النظام فوراً."
+  # 2. إجابة استرجاعية ذكية مدمجة للأسئلة العامة غير المسجلة
+  prefix = "⚡ **[استجابة VIP المباشرة]**\n\n" if is_vip else ""
+  return f"{prefix}سؤالك: '{prompt}' مسجل ومحفوظ، ولكن لم يتم العثور على إجابة نصية مطابقة داخل قاعدة البيانات المحلية حتى الآن. يمكنك إضافة الإجابة بجدول البيانات."
 
 
 # ==========================================
-# 🔒 7. إدارة الجلسة
+# 🔒 7. إدارة الجلسة والمستخدمين
 # ==========================================
 SESSION_FILE = "user_session.txt"
 
@@ -266,7 +419,7 @@ if "active_code" not in st.session_state:
 # 🔑 8. شاشة التسجيل
 # ==========================================
 if not st.session_state["user_email"]:
-  st.title("⚡ مرحباً بك في منصة Nova AI 2026")
+  st.title("⚡ مرحباً بك في منصة Nova AI")
   st.caption("تطوير شركة كيفو (Kivo) - المطور التنفيذي محمد عادل")
   st.markdown("---")
 
@@ -283,16 +436,9 @@ if not st.session_state["user_email"]:
     if st.button("دخول المنصة"):
       clean_email = email.strip().lower()
       if clean_email != "" and password.strip() != "":
-        with st.spinner("جاري تأكيد الهوية..."):
-          save_user(clean_email)
-          st.session_state["user_email"] = clean_email
-          notify_admin_whatsapp(
-              clean_email,
-              "قم بتسجيل الدخول إلى التطبيق",
-              action_type="تسجيل دخول",
-          )
-          time.sleep(0.5)
-          st.rerun()
+        save_user(clean_email)
+        st.session_state["user_email"] = clean_email
+        st.rerun()
       else:
         st.error("يرجى إدخال البريد الإلكتروني وكلمة السر بشكل صحيح.")
 
@@ -313,8 +459,9 @@ else:
 
   st.sidebar.markdown("---")
 
+  # لوحة تحكم المطور لإضافة أكواد وقواعد بيانات
   if is_executive:
-    st.sidebar.subheader("🛠️ لوحة تحكم VIP")
+    st.sidebar.subheader("🛠️ لوحة تحكم VIP والأكواد")
     new_code = st.sidebar.text_input("أنشئ كود VIP جديد:")
     code_days = st.sidebar.number_input(
         "مدة الكود (بالأيام):", min_value=1, value=30, step=1
@@ -323,52 +470,36 @@ else:
     if st.sidebar.button("➕ إنشاء الكود"):
       if new_code.strip():
         add_vip_code(new_code.strip(), int(code_days))
-        st.sidebar.success(
-            f"تمت إضافة الكود: {new_code.strip()} لمدة {code_days} يوم"
-        )
+        st.sidebar.success(f"تمت إضافة الكود: {new_code.strip()}")
         time.sleep(0.5)
         st.rerun()
 
-    st.sidebar.markdown("**📊 الأكواد المتاحة حالياً:**")
+    st.sidebar.markdown("**📊 الأكواد المتاحة:**")
     all_codes = load_vip_codes()
-
-    if not all_codes:
-      st.sidebar.caption("لا توجد أكواد حالياً.")
-    else:
-      for code_key, info in list(all_codes.items()):
-        col_code, col_btn = st.sidebar.columns([3, 1])
-        col_code.caption(f"🔑 `{code_key}`\n⏳ ينتهي: {info['expiry'][:10]}")
-        if col_btn.button("❌", key=f"del_{code_key}"):
-          delete_vip_code(code_key)
-          st.sidebar.warning(f"تم إلغاء الكود: {code_key}")
-          time.sleep(0.5)
-          st.rerun()
+    for code_key, info in list(all_codes.items()):
+      col_code, col_btn = st.sidebar.columns([3, 1])
+      col_code.caption(f"🔑 `{code_key}` ({info['days']} يوم)")
+      if col_btn.button("❌", key=f"del_{code_key}"):
+        delete_vip_code(code_key)
+        st.sidebar.warning(f"تم إلغاء: {code_key}")
+        time.sleep(0.5)
+        st.rerun()
 
     st.sidebar.markdown("---")
 
-  st.sidebar.subheader("🌐 نوع السيرفر")
-
-  if st.session_state["vip_activated"]:
-    is_valid, msg = validate_vip_code(st.session_state["active_code"])
-    if not is_valid:
-      st.session_state["vip_activated"] = False
-      st.session_state["active_code"] = ""
-      st.sidebar.error(
-          f"⚠️ تم إلغاء اشتراكك: {msg}\nتم التحويل تلقائياً للسيرفر المجاني."
-      )
-
+  # اختيار السيرفر و أسلوب العمل
+  st.sidebar.subheader("🌐 نمط التشغيل")
   server_option = st.sidebar.radio(
-      "اختر السيرفر:",
-      ["🌐 سيرفر مجاني", "👑 سيرفر VIP الخاص (للمشتركين)"],
+      "اختر النمط:",
+      ["🌐 المحرك المحلي المباشر", "👑 سيرفر VIP المباشر"],
       index=1 if st.session_state["vip_activated"] else 0,
   )
 
-  if server_option == "👑 سيرفر VIP الخاص (للمشتركين)":
+  if server_option == "👑 سيرفر VIP المباشر":
     if not st.session_state["vip_activated"]:
       vip_code_input = st.sidebar.text_input(
           "🔑 أدخل كود التفعيل (VIP):", type="password"
       )
-
       if st.sidebar.button("✅ تأكيد وتفعيل VIP"):
         is_valid, msg = validate_vip_code(vip_code_input.strip())
         if is_valid:
@@ -381,60 +512,20 @@ else:
           st.sidebar.error(msg)
 
       st.sidebar.info(
-          f"💸 **للتحويل والاشتراك:**\nتحويل المبلغ على محفظة **أورنج كاش"
-          f" (Orange Cash)** برقم:\n`{ORANGE_CASH_NUMBER}`"
+          f"💸 **للتحويل والاشتراك:**\nأورنج كاش: `{ORANGE_CASH_NUMBER}`"
       )
-      st.sidebar.markdown(
-          f"[💬 اضغط هنا لإرسال إيصال التحويل على واتساب](https://wa.me/{MY_PHONE})"
-      )
-  else:
-    st.session_state["vip_activated"] = False
 
   st.sidebar.markdown("---")
 
-  if st.session_state["vip_activated"]:
-    st.markdown(
-        """
-        <style>
-        .main {
-            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%) !important;
-        }
-        .vip-header {
-            background: linear-gradient(90deg, #b8860b, #ffd700, #b8860b);
-            padding: 15px;
-            border-radius: 12px;
-            text-align: center;
-            color: #000;
-            font-weight: bold;
-            font-size: 22px;
-            box-shadow: 0px 4px 15px rgba(255, 215, 0, 0.4);
-            margin-bottom: 20px;
-        }
-        [data-testid="stSidebar"] { 
-            background-color: #0d1117 !important; 
-            border-right: 2px solid #ffd700 !important;
-        }
-        </style>
-    """,
-        unsafe_allow_html=True,
-    )
-
   if "messages" not in st.session_state:
-    welcome_msg = (
-        "مرحباً بك أيها المطور التنفيذي محمد عادل! نظام Nova جاهز ومزود بقاعدة"
-        " بيانات مدمجة 2026."
-        if is_executive
-        else "مرحباً بك في تطبيق Nova من شركة كيفو!"
-    )
-    st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
+    st.session_state.messages = [
+        {"role": "assistant", "content": "مرحباً بك! نظام Nova المحلي جاهز."}
+    ]
 
   if st.sidebar.button("➕ محادثة جديدة"):
-    initial_msg = (
-        "مرحباً بك أيها المطور التنفيذي محمد عادل!"
-        if is_executive
-        else "أهلاً بك مجدداً في Nova AI!"
-    )
-    st.session_state.messages = [{"role": "assistant", "content": initial_msg}]
+    st.session_state.messages = [
+        {"role": "assistant", "content": "أهلاً بك مجدداً في Nova AI!"}
+    ]
     st.rerun()
 
   if st.sidebar.button("🚪 تسجيل الخروج"):
@@ -442,76 +533,34 @@ else:
     st.session_state.clear()
     st.rerun()
 
-  app_mode = st.sidebar.radio(
-      "📌 التنقل بين الأقسام:",
-      [
-          "💬 الشات الذكي وقاعدة البيانات",
-          "🎨 استوديو توليد الصور",
-          "🕌 مواقيت الصلاة",
-      ],
-  )
+  st.title("⚡ نوفا | Nova AI (قاعدة بيانات محلية 100%)")
 
-  if st.session_state["vip_activated"]:
-    st.markdown(
-        '<div class="vip-header">👑 Nova VIP Studio - الخدمة الفائقة المدمجة</div>',
-        unsafe_allow_html=True,
-    )
-  else:
-    st.title("⚡ نوفا | Nova AI Studio")
+  # عرض المحادثات
+  for m in st.session_state.messages:
+    with st.chat_message(m["role"]):
+      st.markdown(m["content"])
+      if "audio" in m and m["audio"]:
+        st.audio(m["audio"], format="audio/mp3")
 
-  if is_executive:
-    st.success("👑 أهلاً بك يا أستاذ محمد عادل (المطور التنفيذي)")
+  # استقبال السؤال من المستخدم
+  if user_prompt := st.chat_input("ابحث أو اسأل هنا..."):
+    st.session_state.messages.append({"role": "user", "content": user_prompt})
 
-  st.markdown("---")
+    with st.chat_message("user"):
+      st.markdown(user_prompt)
 
-  if app_mode == "💬 الشات الذكي وقاعدة البيانات":
-
-    for idx, m in enumerate(st.session_state.messages):
-      with st.chat_message(m["role"]):
-        st.markdown(m["content"])
-        if "audio" in m and m["audio"]:
-          st.audio(m["audio"], format="audio/mp3")
-
-    if user_prompt := st.chat_input("اكتب سؤالك هنا..."):
-      st.session_state.messages.append({"role": "user", "content": user_prompt})
-      notify_admin_whatsapp(
-          user_email, user_prompt, action_type="بحث / سؤال في الشات"
+    with st.chat_message("assistant"):
+      res_text = ask_nova_ai(
+          user_prompt, is_vip=st.session_state["vip_activated"]
       )
+      st.markdown(res_text)
 
-      with st.chat_message("user"):
-        st.markdown(user_prompt)
+      audio_fp = text_to_audio(res_text)
+      if audio_fp:
+        st.audio(audio_fp, format="audio/mp3")
 
-      with st.chat_message("assistant"):
-        with st.spinner("Nova يجيب الآن... ⚡"):
-          if (
-              server_option == "👑 سيرفر VIP الخاص (للمشتركين)"
-              and not st.session_state["vip_activated"]
-          ):
-            res_text = "❌ يرجى إدخال كود VIP والضغط على **تأكيد وتفعيل VIP** أولاً."
-          else:
-            res_text = ask_nova_ai(
-                user_prompt, is_vip=st.session_state["vip_activated"]
-            )
-
-        st.markdown(res_text)
-        audio_fp = text_to_audio(res_text)
-
-        if audio_fp:
-          st.audio(audio_fp, format="audio/mp3")
-
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": res_text,
-            "audio": audio_fp,
-        })
-
-  elif app_mode == "🎨 استوديو توليد الصور":
-    st.title("🎨 استوديو الوسائط - Nova Studio")
-    p_img = st.text_input("صف الصورة التي تريدها:")
-    if st.button("توليد الصورة 🎨") and p_img:
-      img_url = f"https://image.pollinations.ai/prompt/{urllib.parse.quote(p_img)}?width=1024&height=1024&nologo=true"
-      st.image(img_url, caption=p_img)
-
-  elif app_mode == "🕌 مواقيت الصلاة":
-    st.title("🕌 مواقيت الصلاة")
-    st.info("قسم مواقيت الصلاة يعمل بنجاح.")
+      st.session_state.messages.append({
+          "role": "assistant",
+          "content": res_text,
+          "audio": audio_fp,
+      })
