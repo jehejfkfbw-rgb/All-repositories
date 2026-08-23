@@ -2,4 +2,4 @@ streamlit
 g4f
 Pillow
 requests
-gTTS
+gtts
