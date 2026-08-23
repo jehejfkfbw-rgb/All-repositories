@@ -4,7 +4,6 @@ import io
 import os
 import time
 import urllib.parse
-from g4f.client import Client
 from gtts import gTTS
 from PIL import Image
 import requests
@@ -89,7 +88,7 @@ def notify_admin_whatsapp(user_email, search_query, action_type="بحث / سؤا
 
 
 # ==========================================
-# 🔊 دالة تحويل النص إلى صوت
+# 🔊 3. دالة تحويل النص إلى صوت
 # ==========================================
 def text_to_audio(text):
   try:
@@ -103,7 +102,7 @@ def text_to_audio(text):
 
 
 # ==========================================
-# 🔒 3. إدارة الجلسة وتسجيل الدخول الدائم
+# 🔒 4. إدارة الجلسة وتسجيل الدخول الدائم
 # ==========================================
 EXECUTIVE_EMAIL = "jehejfkfbw@gmail.com"
 SESSION_FILE = "user_session.txt"
@@ -138,7 +137,7 @@ if "user_email" not in st.session_state:
   st.session_state["user_email"] = get_saved_user()
 
 # ==========================================
-# 🔑 4. شاشة التسجيل
+# 🔑 5. شاشة التسجيل
 # ==========================================
 if not st.session_state["user_email"]:
   st.title("⚡ مرحباً بك في منصة Nova AI")
@@ -172,7 +171,7 @@ if not st.session_state["user_email"]:
         st.error("يرجى إدخال البريد الإلكتروني وكلمة السر بشكل صحيح.")
 
 # ==========================================
-# 🚀 5. التطبيق الرئيسي
+# 🚀 6. التطبيق الرئيسي
 # ==========================================
 else:
   user_email = st.session_state["user_email"]
@@ -387,16 +386,25 @@ else:
 
           with st.spinner("Nova يفكر الآن... ⚡"):
             try:
-              client = Client()
-              response = client.chat.completions.create(
-                  model="gpt-4o",
-                  provider="PollinationsAI",
-                  messages=[
+              url = "https://text.pollinations.ai/"
+              payload = {
+                  "messages": [
                       {"role": "system", "content": system_instruction},
                       {"role": "user", "content": user_prompt},
                   ],
+                  "model": "openai",
+              }
+              headers = {"Content-Type": "application/json"}
+              response = requests.post(
+                  url, json=payload, headers=headers, timeout=15
               )
-              res_text = response.choices[0].message.content
+
+              if response.status_code == 200:
+                res_text = response.text
+              else:
+                res_text = (
+                    "عذراً، حدث خطأ في الاستجابة من الخادم. حاول مرة أخرى."
+                )
             except Exception as e:
               res_text = f"حدث خطأ أثناء الاتصال بالخادم: {e}"
 
