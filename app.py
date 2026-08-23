@@ -46,16 +46,6 @@ st.markdown(
         font-weight: bold;
     }
 
-    .history-card {
-        padding: 8px;
-        background-color: #1f2937;
-        border-right: 3px solid #1E88E5;
-        border-radius: 4px;
-        margin-bottom: 5px;
-        font-size: 12px;
-        color: #ffffff;
-    }
-
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     </style>
@@ -64,9 +54,10 @@ st.markdown(
 )
 
 # ==========================================
-# 📲 2. إشعارات الواتساب
+# 📲 2. إشعارات الواتساب ورقام التواصل
 # ==========================================
 MY_PHONE = "201102464297"
+ORANGE_CASH_NUMBER = "01213783090"
 MY_API_KEY = "2586712"
 
 
@@ -102,22 +93,42 @@ def text_to_audio(text):
 
 
 # ==========================================
-# 🤖 4. محرك الذكاء الاصطناعي (سيرفر مجاني + سيرفر خاص مدفوع)
+# 🔑 4. إدارة أكواد VIP الديناميكية
 # ==========================================
-# أكواد التفعيل التي تعطيها للعملاء بعد التحويل على فودافون كاش
-VALID_VIP_CODES = ["NOVA2026", "KIVO_VIP", "MOHAMED_NOVA"]
+CODES_FILE = "vip_codes.txt"
 
 
+def get_vip_codes():
+  if not os.path.exists(CODES_FILE):
+    default_codes = ["NOVA2026", "KIVO_VIP", "MOHAMED_NOVA"]
+    save_vip_codes(default_codes)
+    return default_codes
+  try:
+    with open(CODES_FILE, "r", encoding="utf-8") as f:
+      codes = [line.strip() for line in f.readlines() if line.strip()]
+      return codes
+  except Exception:
+    return ["NOVA2026"]
+
+
+def save_vip_codes(codes_list):
+  with open(CODES_FILE, "w", encoding="utf-8") as f:
+    for code in set(codes_list):
+      f.write(f"{code}\n")
+
+
+# ==========================================
+# 🤖 5. محرك الذكاء الاصطناعي
+# ==========================================
 def ask_nova_ai(prompt, server_type, user_vip_code=""):
   sys_prompt = "أنت مساعد ذكي اسمه Nova تابع لشركة Kivo. المطور التنفيذي هو محمد عادل من شركة Kivo. أجب بذكاء واحترافية وبشكل مبسط:"
+  valid_codes = get_vip_codes()
 
-  # 👑 خيار 1: السيرفر الخاص المدفوع (سريع جداً + بحث مباشر على النت)
   if server_type == "👑 سيرفر VIP الخاص (للمشتركين)":
-    if user_vip_code.strip() in VALID_VIP_CODES:
+    if user_vip_code.strip() in valid_codes:
       try:
-        # محرك البحث المباشر للنت للسيرفر الخاص
         encoded_p = urllib.parse.quote(
-            f"{sys_prompt}\nابحث في النت وأجب بحدث المعلومات عن: {prompt}"
+            f"{sys_prompt}\nابحث في النت وأجب بأحدث المعلومات عن: {prompt}"
         )
         url = (
             f"https://text.pollinations.ai/{encoded_p}?model=searchgpt&cache=false"
@@ -128,9 +139,8 @@ def ask_nova_ai(prompt, server_type, user_vip_code=""):
       except Exception:
         pass
     else:
-      return "❌ كود التفعيل غير صحيح! يرجى التواصل مع الإدارة للاشتراك في السيرفر الخاص عبر فودافون كاش."
+      return f"❌ كود التفعيل غير صحيح! حول مبلغ الاشتراك على أورنج كاش ({ORANGE_CASH_NUMBER}) ثم تواصل معنا للحصول على الكود."
 
-  # 🌐 خيار 2: السيرفر المجاني العادي
   try:
     encoded_p = urllib.parse.quote(f"{sys_prompt}\nالسؤال: {prompt}")
     url = f"https://text.pollinations.ai/{encoded_p}?model=qna&cache=false"
@@ -144,7 +154,7 @@ def ask_nova_ai(prompt, server_type, user_vip_code=""):
 
 
 # ==========================================
-# 🔒 5. إدارة الجلسة
+# 🔒 6. إدارة الجلسة
 # ==========================================
 EXECUTIVE_EMAIL = "jehejfkfbw@gmail.com"
 SESSION_FILE = "user_session.txt"
@@ -179,7 +189,7 @@ if "user_email" not in st.session_state:
   st.session_state["user_email"] = get_saved_user()
 
 # ==========================================
-# 🔑 6. شاشة التسجيل
+# 🔑 7. شاشة التسجيل
 # ==========================================
 if not st.session_state["user_email"]:
   st.title("⚡ مرحباً بك في منصة Nova AI")
@@ -213,7 +223,7 @@ if not st.session_state["user_email"]:
         st.error("يرجى إدخال البريد الإلكتروني وكلمة السر بشكل صحيح.")
 
 # ==========================================
-# 🚀 7. التطبيق الرئيسي
+# 🚀 8. التطبيق الرئيسي
 # ==========================================
 else:
   user_email = st.session_state["user_email"]
@@ -229,7 +239,23 @@ else:
 
   st.sidebar.markdown("---")
 
-  # ⚙️ قسم اختيار السيرفر للاستخدام والاشتراك
+  # 🛠️ لوحة تحكم المطور
+  if is_executive:
+    st.sidebar.subheader("🛠️ لوحة تحكم الأكواد")
+    current_codes = get_vip_codes()
+    new_code = st.sidebar.text_input("أنشئ كود VIP جديد:")
+    if st.sidebar.button("➕ إضافة الكود"):
+      if new_code.strip():
+        current_codes.append(new_code.strip())
+        save_vip_codes(current_codes)
+        st.sidebar.success(f"تمت إضافة الكود: {new_code.strip()}")
+        time.sleep(0.5)
+        st.rerun()
+
+    st.sidebar.caption(f"الأكواد الشغالة: {', '.join(current_codes)}")
+    st.sidebar.markdown("---")
+
+  # ⚙️ قسم اختيار السيرفر والاشتراك
   st.sidebar.subheader("🌐 نوع السيرفر")
   server_option = st.sidebar.radio(
       "اختر السيرفر:",
@@ -242,8 +268,11 @@ else:
         "🔑 أدخل كود التفعيل (VIP):", type="password"
     )
     st.sidebar.info(
-        "💡 للاشتراك والحصول على كود VIP السريع، حول مبلغ الاشتراك على"
-        " فودافون كاش / InstaPay برقم: **01102464297**"
+        f"💸 **للتحويل والاشتراك:**\nتحويل المبلغ على محفظة **أورنج كاش"
+        f" (Orange Cash)** برقم:\n`{ORANGE_CASH_NUMBER}`"
+    )
+    st.sidebar.markdown(
+        f"[💬 اضغط هنا لإرسال إيصال التحويل على واتساب](https://wa.me/{MY_PHONE})"
     )
 
   st.sidebar.markdown("---")
