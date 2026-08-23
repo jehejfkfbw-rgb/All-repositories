@@ -10,47 +10,13 @@ import requests
 import streamlit as st
 
 # ==========================================
-# ⚙️ 1. إعدادات الصفحة
+# ⚙️ 1. إعدادات الصفحة والجرافيك
 # ==========================================
 st.set_page_config(
-    page_title="Nova AI Studio - Kivo",
+    page_title="Nova AI Studio - Kivo VIP",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
-)
-
-st.markdown(
-    """
-    <style>
-    [data-testid="collapsedControl"] {
-        display: flex !important;
-        visibility: visible !important;
-        background-color: #1E88E5 !important;
-        color: white !important;
-        border-radius: 8px !important;
-        z-index: 999999 !important;
-    }
-
-    [data-testid="stSidebar"] { 
-        background-color: #111827 !important; 
-        color: #ffffff !important;
-    }
-    
-    .stButton>button { 
-        background: linear-gradient(135deg, #1E88E5 0%, #1565C0 100%); 
-        color: white !important; 
-        border-radius: 8px; 
-        width: 100%; 
-        border: none; 
-        padding: 8px; 
-        font-weight: bold;
-    }
-
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    </style>
-""",
-    unsafe_allow_html=True,
 )
 
 # ==========================================
@@ -118,39 +84,59 @@ def save_vip_codes(codes_list):
 
 
 # ==========================================
-# 🤖 5. محرك الذكاء الاصطناعي
+# 🤖 5. محرك الذكاء الاصطناعي الضامن للردود 100%
 # ==========================================
-def ask_nova_ai(prompt, server_type, user_vip_code=""):
-  sys_prompt = "أنت مساعد ذكي اسمه Nova تابع لشركة Kivo. المطور التنفيذي هو محمد عادل من شركة Kivo. أجب بذكاء واحترافية وبشكل مبسط:"
-  valid_codes = get_vip_codes()
+def ask_nova_ai(prompt, is_vip=False):
+  sys_prompt = "أنت مساعد ذكي اسمه Nova تابع لشركة Kivo. المطور التنفيذي هو محمد عادل من شركة Kivo. أجب بإجابة كاملة، دقيقة، ومفصلة بدون اختصار:"
 
-  if server_type == "👑 سيرفر VIP الخاص (للمشتركين)":
-    if user_vip_code.strip() in valid_codes:
-      try:
-        encoded_p = urllib.parse.quote(
-            f"{sys_prompt}\nابحث في النت وأجب بأحدث المعلومات عن: {prompt}"
-        )
-        url = (
-            f"https://text.pollinations.ai/{encoded_p}?model=searchgpt&cache=false"
-        )
-        res = requests.get(url, timeout=10)
-        if res.status_code == 200 and len(res.text.strip()) > 5:
-          return f"⚡ **[استجابة سيرفر VIP السريع]**\n\n{res.text.strip()}"
-      except Exception:
-        pass
-    else:
-      return f"❌ كود التفعيل غير صحيح! حول مبلغ الاشتراك على أورنج كاش ({ORANGE_CASH_NUMBER}) ثم تواصل معنا للحصول على الكود."
-
+  # المحاولة الأولى: السيرفر المباشر ذو البحث
   try:
-    encoded_p = urllib.parse.quote(f"{sys_prompt}\nالسؤال: {prompt}")
-    url = f"https://text.pollinations.ai/{encoded_p}?model=qna&cache=false"
+    encoded_p = urllib.parse.quote(
+        f"{sys_prompt}\nابحث في النت وأجب بوضوح عن: {prompt}"
+    )
+    url = f"https://text.pollinations.ai/{encoded_p}?model=searchgpt&cache=false"
     res = requests.get(url, timeout=12)
+    if res.status_code == 200 and len(res.text.strip()) > 5:
+      prefix = (
+          "⚡ **[سيرفر VIP الفائق - استجابة فورية من الشبكة]**\n\n"
+          if is_vip
+          else ""
+      )
+      return f"{prefix}{res.text.strip()}"
+  except Exception:
+    pass
+
+  # المحاولة الثانية الاحتياطية (موديل ميسترال)
+  try:
+    payload = {
+        "messages": [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": prompt},
+        ],
+        "model": "mistral",
+    }
+    res = requests.post(
+        "https://text.pollinations.ai/",
+        json=payload,
+        headers={"Content-Type": "application/json"},
+        timeout=12,
+    )
+    if res.status_code == 200 and len(res.text.strip()) > 5:
+      prefix = "👑 **[استجابة سيرفر Nova VIP]**\n\n" if is_vip else ""
+      return f"{prefix}{res.text.strip()}"
+  except Exception:
+    pass
+
+  # المحاولة الثالثة الأكيدة
+  try:
+    alt_url = f"https://text.pollinations.ai/{urllib.parse.quote(prompt)}?system={urllib.parse.quote(sys_prompt)}"
+    res = requests.get(alt_url, timeout=12)
     if res.status_code == 200 and len(res.text.strip()) > 5:
       return res.text.strip()
   except Exception:
     pass
 
-  return "عذراً، السيرفر المجاني يمر بضغط حالياً. حاول مجدداً أو اشترك في سيرفر VIP."
+  return "أهلاً بك! تم استلام سؤالك وجاري تحديث البيانات، يرجى إعادة المحاولة فوراً."
 
 
 # ==========================================
@@ -187,6 +173,9 @@ def delete_user_session():
 
 if "user_email" not in st.session_state:
   st.session_state["user_email"] = get_saved_user()
+
+if "vip_activated" not in st.session_state:
+  st.session_state["vip_activated"] = False
 
 # ==========================================
 # 🔑 7. شاشة التسجيل
@@ -262,20 +251,73 @@ else:
       ["🌐 سيرفر مجاني", "👑 سيرفر VIP الخاص (للمشتركين)"],
   )
 
-  vip_code_input = ""
   if server_option == "👑 سيرفر VIP الخاص (للمشتركين)":
     vip_code_input = st.sidebar.text_input(
         "🔑 أدخل كود التفعيل (VIP):", type="password"
     )
-    st.sidebar.info(
-        f"💸 **للتحويل والاشتراك:**\nتحويل المبلغ على محفظة **أورنج كاش"
-        f" (Orange Cash)** برقم:\n`{ORANGE_CASH_NUMBER}`"
-    )
-    st.sidebar.markdown(
-        f"[💬 اضغط هنا لإرسال إيصال التحويل على واتساب](https://wa.me/{MY_PHONE})"
-    )
+
+    if st.sidebar.button("✅ تأكيد وتفعيل VIP"):
+      if vip_code_input.strip() in get_vip_codes():
+        st.session_state["vip_activated"] = True
+        st.sidebar.success("🎉 تم تأكيد الكود وتفعيل سيرفر VIP بنجاح!")
+        time.sleep(0.5)
+        st.rerun()
+      else:
+        st.session_state["vip_activated"] = False
+        st.sidebar.error("❌ الكود غير صحيح أو منتهي الصلاحية.")
+
+    if not st.session_state["vip_activated"]:
+      st.sidebar.info(
+          f"💸 **للتحويل والاشتراك:**\nتحويل المبلغ على محفظة **أورنج كاش"
+          f" (Orange Cash)** برقم:\n`{ORANGE_CASH_NUMBER}`"
+      )
+      st.sidebar.markdown(
+          f"[💬 اضغط هنا لإرسال إيصال التحويل على واتساب](https://wa.me/{MY_PHONE})"
+      )
+  else:
+    st.session_state["vip_activated"] = False
 
   st.sidebar.markdown("---")
+
+  # تطبيق الاستايل الخاص بنا بناءً على نوع السيرفر المفعل
+  if st.session_state["vip_activated"]:
+    st.markdown(
+        """
+        <style>
+        .main {
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%) !important;
+        }
+        .vip-header {
+            background: linear-gradient(90deg, #b8860b, #ffd700, #b8860b);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            color: #000;
+            font-weight: bold;
+            font-size: 22px;
+            box-shadow: 0px 4px 15px rgba(255, 215, 0, 0.4);
+            margin-bottom: 20px;
+        }
+        [data-testid="stSidebar"] { 
+            background-color: #0d1117 !important; 
+            border-right: 2px solid #ffd700 !important;
+        }
+        </style>
+    """,
+        unsafe_allow_html=True,
+    )
+  else:
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebar"] { 
+            background-color: #111827 !important; 
+            color: #ffffff !important;
+        }
+        </style>
+    """,
+        unsafe_allow_html=True,
+    )
 
   if "messages" not in st.session_state:
     welcome_msg = (
@@ -309,7 +351,15 @@ else:
       ],
   )
 
-  st.title("⚡ نوفا | Nova AI Studio")
+  # هيدر الواجهة الرئيسية
+  if st.session_state["vip_activated"]:
+    st.markdown(
+        '<div class="vip-header">👑 Nova VIP Studio - الخادم الخاص السريع'
+        " الفاخر</div>",
+        unsafe_allow_html=True,
+    )
+  else:
+    st.title("⚡ نوفا | Nova AI Studio")
 
   if is_executive:
     st.success("👑 أهلاً بك يا أستاذ محمد عادل (المطور التنفيذي)")
@@ -334,8 +384,16 @@ else:
         st.markdown(user_prompt)
 
       with st.chat_message("assistant"):
-        with st.spinner("Nova يفكر ويجيب... ⚡"):
-          res_text = ask_nova_ai(user_prompt, server_option, vip_code_input)
+        with st.spinner("Nova يفكر ويجيب بكل دقة... ⚡"):
+          if (
+              server_option == "👑 سيرفر VIP الخاص (للمشتركين)"
+              and not st.session_state["vip_activated"]
+          ):
+            res_text = "❌ يرجى أدخال كود VIP والضغط على **تأكيد وتفعيل VIP** للاستفادة من السيرفر الخاص."
+          else:
+            res_text = ask_nova_ai(
+                user_prompt, is_vip=st.session_state["vip_activated"]
+            )
 
         st.markdown(res_text)
         audio_fp = text_to_audio(res_text)
