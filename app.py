@@ -20,7 +20,7 @@ st.set_page_config(
 )
 
 # ==========================================
-# 📲 2. إشعارات الواتساب ورقام التواصل
+# 📲 2. إشعارات الواتساب وأرقام التواصل
 # ==========================================
 MY_PHONE = "201102464297"
 ORANGE_CASH_NUMBER = "01213783090"
@@ -84,59 +84,64 @@ def save_vip_codes(codes_list):
 
 
 # ==========================================
-# 🤖 5. محرك الذكاء الاصطناعي الضامن للردود 100%
+# 🤖 5. محرك الذكاء الاصطناعي الشامل والتفصيلي
 # ==========================================
 def ask_nova_ai(prompt, is_vip=False):
-  sys_prompt = "أنت مساعد ذكي اسمه Nova تابع لشركة Kivo. المطور التنفيذي هو محمد عادل من شركة Kivo. أجب بإجابة كاملة، دقيقة، ومفصلة بدون اختصار:"
+  # توجيه النظام لإجابات طويلة وشاملة جداً
+  sys_prompt = (
+      "أنت مساعد ذكي ومتطور اسمه Nova تابع لشركة Kivo والمطور التنفيذي هو"
+      " محمد عادل. "
+      "قانونك الأساسي: يجب أن تكون إجابتك مفصلة جداً، شمولية، وغنية بالمعلومات"
+      " الدقيقة والتوضيحات والخطوات العملية. "
+      "ممنوع نهائياً الإجابات المختصرة أو الجمل القليلة. اشرح الموضوع باستفاضة"
+      " كاملة واكتب إجابة غنية واحترافية:"
+  )
 
-  # المحاولة الأولى: السيرفر المباشر ذو البحث
-  try:
-    encoded_p = urllib.parse.quote(
-        f"{sys_prompt}\nابحث في النت وأجب بوضوح عن: {prompt}"
-    )
-    url = f"https://text.pollinations.ai/{encoded_p}?model=searchgpt&cache=false"
-    res = requests.get(url, timeout=12)
-    if res.status_code == 200 and len(res.text.strip()) > 5:
-      prefix = (
-          "⚡ **[سيرفر VIP الفائق - استجابة فورية من الشبكة]**\n\n"
-          if is_vip
-          else ""
-      )
-      return f"{prefix}{res.text.strip()}"
-  except Exception:
-    pass
-
-  # المحاولة الثانية الاحتياطية (موديل ميسترال)
+  # 1. المحاولة الأولى باستخدام نموذج OpenAI GPT المتقدم عبر Pollinations
   try:
     payload = {
         "messages": [
             {"role": "system", "content": sys_prompt},
             {"role": "user", "content": prompt},
         ],
-        "model": "mistral",
+        "model": "openai",
+        "cache": False,
     }
     res = requests.post(
         "https://text.pollinations.ai/",
         json=payload,
         headers={"Content-Type": "application/json"},
-        timeout=12,
+        timeout=15,
     )
-    if res.status_code == 200 and len(res.text.strip()) > 5:
-      prefix = "👑 **[استجابة سيرفر Nova VIP]**\n\n" if is_vip else ""
+    if res.status_code == 200 and len(res.text.strip()) > 20:
+      prefix = (
+          "⚡ **[سيرفر VIP الفائق - إجابة تفصيلية شاملة]**\n\n" if is_vip else ""
+      )
       return f"{prefix}{res.text.strip()}"
   except Exception:
     pass
 
-  # المحاولة الثالثة الأكيدة
+  # 2. المحاولة الثانية عبر نموذج البحث المباشر
   try:
-    alt_url = f"https://text.pollinations.ai/{urllib.parse.quote(prompt)}?system={urllib.parse.quote(sys_prompt)}"
-    res = requests.get(alt_url, timeout=12)
-    if res.status_code == 200 and len(res.text.strip()) > 5:
+    encoded_p = urllib.parse.quote(f"{sys_prompt}\nالسؤال: {prompt}")
+    url = f"https://text.pollinations.ai/{encoded_p}?model=searchgpt&cache=false"
+    res = requests.get(url, timeout=15)
+    if res.status_code == 200 and len(res.text.strip()) > 20:
+      prefix = "👑 **[استجابة سيرفر Nova VIP المباشرة]**\n\n" if is_vip else ""
+      return f"{prefix}{res.text.strip()}"
+  except Exception:
+    pass
+
+  # 3. المحاولة الثالثة الاحتياطية باستخدام موديل qna
+  try:
+    alt_url = f"https://text.pollinations.ai/{urllib.parse.quote(prompt)}?system={urllib.parse.quote(sys_prompt)}&model=qna"
+    res = requests.get(alt_url, timeout=15)
+    if res.status_code == 200 and len(res.text.strip()) > 10:
       return res.text.strip()
   except Exception:
     pass
 
-  return "أهلاً بك! تم استلام سؤالك وجاري تحديث البيانات، يرجى إعادة المحاولة فوراً."
+  return "عذراً، حدث ضغط مفاجئ على السيرفرات. يرجى إعادة الضغط على إرسال وسيقوم النظام بالرد فوراً بإجابة كاملة."
 
 
 # ==========================================
@@ -279,7 +284,7 @@ else:
 
   st.sidebar.markdown("---")
 
-  # تطبيق الاستايل الخاص بنا بناءً على نوع السيرفر المفعل
+  # تصميم الواجهة الجرافيكية المميزة
   if st.session_state["vip_activated"]:
     st.markdown(
         """
@@ -306,23 +311,11 @@ else:
     """,
         unsafe_allow_html=True,
     )
-  else:
-    st.markdown(
-        """
-        <style>
-        [data-testid="stSidebar"] { 
-            background-color: #111827 !important; 
-            color: #ffffff !important;
-        }
-        </style>
-    """,
-        unsafe_allow_html=True,
-    )
 
   if "messages" not in st.session_state:
     welcome_msg = (
         "مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو! نظام Nova"
-        " في خدمتك بالكامل."
+        " جاهز للرد على كل أسئلتك باستفاضة وإجابات كاملة."
         if is_executive
         else "مرحباً بك في تطبيق Nova من شركة كيفو!"
     )
@@ -351,7 +344,6 @@ else:
       ],
   )
 
-  # هيدر الواجهة الرئيسية
   if st.session_state["vip_activated"]:
     st.markdown(
         '<div class="vip-header">👑 Nova VIP Studio - الخادم الخاص السريع'
@@ -384,7 +376,7 @@ else:
         st.markdown(user_prompt)
 
       with st.chat_message("assistant"):
-        with st.spinner("Nova يفكر ويجيب بكل دقة... ⚡"):
+        with st.spinner("Nova يحلل ويكتب إجابة تفصيلية شاملة... ⚡"):
           if (
               server_option == "👑 سيرفر VIP الخاص (للمشتركين)"
               and not st.session_state["vip_activated"]
