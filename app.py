@@ -5,7 +5,7 @@ import os
 import time
 import urllib.parse
 from g4f.client import Client
-from gTTS import gTTS
+from gtts import gTTS
 from PIL import Image
 import requests
 import streamlit as st
@@ -88,10 +88,12 @@ def notify_admin_whatsapp(user_email, search_query, action_type="بحث / سؤا
     pass
 
 
-# --- دالة تحويل النص إلى صوت ---
+# ==========================================
+# 🔊 دالة تحويل النص إلى صوت
+# ==========================================
 def text_to_audio(text):
   try:
-    tts = gTTS(text=text, lang="ar", slow=False)
+    tts = gTTS(text=text, lang="ar")
     fp = io.BytesIO()
     tts.write_to_fp(fp)
     fp.seek(0)
@@ -248,7 +250,7 @@ else:
   app_mode = st.sidebar.radio(
       "📌 التنقل بين الأقسام:",
       [
-          "💬 الشات الذكي (محادثات صوتیة + صور + فيديوهات)",
+          "💬 الشات الذكي (صور + فيديوهات)",
           "🎨 استوديو توليد الصور والفيديوهات",
           "🕌 مواقيت الصلاة والعداد التنازلي",
       ],
@@ -267,21 +269,14 @@ else:
   # ------------------------------------------
   # 💬 1. الشات الرئيسي
   # ------------------------------------------
-  if app_mode == "💬 الشات الذكي (محادثات صوتیة + صور + فيديوهات)":
+  if app_mode == "💬 الشات الذكي (صور + فيديوهات)":
 
     for idx, m in enumerate(st.session_state.messages):
       with st.chat_message(m["role"]):
         st.markdown(m["content"])
 
-        if m["role"] == "assistant":
-          if "audio_bytes" in m:
-            st.audio(m["audio_bytes"], format="audio/mp3")
-          else:
-            if st.button("🔊 استماع للرد", key=f"tts_btn_{idx}"):
-              audio_data = text_to_audio(m["content"])
-              if audio_data:
-                m["audio_bytes"] = audio_data
-                st.audio(audio_data, format="audio/mp3")
+        if "audio" in m and m["audio"]:
+          st.audio(m["audio"], format="audio/mp3")
 
         if "image_bytes" in m:
           st.image(m["image_bytes"], caption="الصورة المتولدة 🎨")
@@ -302,7 +297,6 @@ else:
     ):
       st.session_state.messages.append({"role": "user", "content": user_prompt})
 
-      # 📲 إرسال إشعار فوري إلى الواتساب بسؤال/بحث المستخدم
       notify_admin_whatsapp(
           user_email, user_prompt, action_type="بحث / سؤال في الشات"
       )
@@ -411,15 +405,12 @@ else:
           audio_fp = text_to_audio(res_text)
           if audio_fp:
             st.audio(audio_fp, format="audio/mp3")
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": res_text,
-                "audio_bytes": audio_fp,
-            })
-          else:
-            st.session_state.messages.append(
-                {"role": "assistant", "content": res_text}
-            )
+
+          st.session_state.messages.append({
+              "role": "assistant",
+              "content": res_text,
+              "audio": audio_fp,
+          })
 
   # ------------------------------------------
   # 🎨 2. قسم استوديو الوسائط
