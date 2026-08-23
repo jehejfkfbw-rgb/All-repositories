@@ -102,12 +102,35 @@ def text_to_audio(text):
 
 
 # ==========================================
-# 🤖 4. محرك الردود الذكي المتعدد (بدون توقف)
+# 🤖 4. محرك الذكاء الاصطناعي (سيرفر مجاني + سيرفر خاص مدفوع)
 # ==========================================
-def ask_nova_ai(prompt):
-  sys_prompt = "أنت مساعد ذكي اسمه Nova تابع لشركة Kivo. المطور التنفيذي هو محمد عادل من شركة Kivo. أجب على السؤال التالي بذكاء وبالمصرية أو العربية البسيطة:"
+# أكواد التفعيل التي تعطيها للعملاء بعد التحويل على فودافون كاش
+VALID_VIP_CODES = ["NOVA2026", "KIVO_VIP", "MOHAMED_NOVA"]
 
-  # المحاولة الأولى: سيرفر Pollinations المباشر بنمط qna
+
+def ask_nova_ai(prompt, server_type, user_vip_code=""):
+  sys_prompt = "أنت مساعد ذكي اسمه Nova تابع لشركة Kivo. المطور التنفيذي هو محمد عادل من شركة Kivo. أجب بذكاء واحترافية وبشكل مبسط:"
+
+  # 👑 خيار 1: السيرفر الخاص المدفوع (سريع جداً + بحث مباشر على النت)
+  if server_type == "👑 سيرفر VIP الخاص (للمشتركين)":
+    if user_vip_code.strip() in VALID_VIP_CODES:
+      try:
+        # محرك البحث المباشر للنت للسيرفر الخاص
+        encoded_p = urllib.parse.quote(
+            f"{sys_prompt}\nابحث في النت وأجب بحدث المعلومات عن: {prompt}"
+        )
+        url = (
+            f"https://text.pollinations.ai/{encoded_p}?model=searchgpt&cache=false"
+        )
+        res = requests.get(url, timeout=10)
+        if res.status_code == 200 and len(res.text.strip()) > 5:
+          return f"⚡ **[استجابة سيرفر VIP السريع]**\n\n{res.text.strip()}"
+      except Exception:
+        pass
+    else:
+      return "❌ كود التفعيل غير صحيح! يرجى التواصل مع الإدارة للاشتراك في السيرفر الخاص عبر فودافون كاش."
+
+  # 🌐 خيار 2: السيرفر المجاني العادي
   try:
     encoded_p = urllib.parse.quote(f"{sys_prompt}\nالسؤال: {prompt}")
     url = f"https://text.pollinations.ai/{encoded_p}?model=qna&cache=false"
@@ -117,27 +140,7 @@ def ask_nova_ai(prompt):
   except Exception:
     pass
 
-  # المحاولة الثانية: سيرفر خفيف بديل
-  try:
-    payload = {
-        "messages": [
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": prompt},
-        ],
-        "model": "mistral",
-    }
-    res = requests.post(
-        "https://text.pollinations.ai/",
-        json=payload,
-        headers={"Content-Type": "application/json"},
-        timeout=12,
-    )
-    if res.status_code == 200 and len(res.text.strip()) > 5:
-      return res.text.strip()
-  except Exception:
-    pass
-
-  return "عذراً، السيرفر المجاني يمر بضغط حالياً. يرجى إعادة إرسال السؤال بعد ثوانٍ قليلة."
+  return "عذراً، السيرفر المجاني يمر بضغط حالياً. حاول مجدداً أو اشترك في سيرفر VIP."
 
 
 # ==========================================
@@ -224,6 +227,27 @@ else:
   else:
     st.sidebar.info(f"👤 المستخدم: {user_email}")
 
+  st.sidebar.markdown("---")
+
+  # ⚙️ قسم اختيار السيرفر للاستخدام والاشتراك
+  st.sidebar.subheader("🌐 نوع السيرفر")
+  server_option = st.sidebar.radio(
+      "اختر السيرفر:",
+      ["🌐 سيرفر مجاني", "👑 سيرفر VIP الخاص (للمشتركين)"],
+  )
+
+  vip_code_input = ""
+  if server_option == "👑 سيرفر VIP الخاص (للمشتركين)":
+    vip_code_input = st.sidebar.text_input(
+        "🔑 أدخل كود التفعيل (VIP):", type="password"
+    )
+    st.sidebar.info(
+        "💡 للاشتراك والحصول على كود VIP السريع، حول مبلغ الاشتراك على"
+        " فودافون كاش / InstaPay برقم: **01102464297**"
+    )
+
+  st.sidebar.markdown("---")
+
   if "messages" not in st.session_state:
     welcome_msg = (
         "مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو! نظام Nova"
@@ -233,8 +257,6 @@ else:
     )
     st.session_state.messages = [{"role": "assistant", "content": welcome_msg}]
 
-  st.sidebar.markdown("---")
-
   if st.sidebar.button("➕ محادثة جديدة"):
     initial_msg = (
         "مرحباً بك أيها المطور التنفيذي محمد عادل!"
@@ -243,8 +265,6 @@ else:
     )
     st.session_state.messages = [{"role": "assistant", "content": initial_msg}]
     st.rerun()
-
-  st.sidebar.markdown("---")
 
   if st.sidebar.button("🚪 تسجيل الخروج"):
     delete_user_session()
@@ -286,7 +306,7 @@ else:
 
       with st.chat_message("assistant"):
         with st.spinner("Nova يفكر ويجيب... ⚡"):
-          res_text = ask_nova_ai(user_prompt)
+          res_text = ask_nova_ai(user_prompt, server_option, vip_code_input)
 
         st.markdown(res_text)
         audio_fp = text_to_audio(res_text)
