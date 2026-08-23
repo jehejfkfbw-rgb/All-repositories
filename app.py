@@ -8,7 +8,7 @@ from PIL import Image
 import requests
 import streamlit as st
 from gtts import gTTS
-from duckduckgo_search import DDGS
+import google.generativeai as genai
 
 # ==========================================
 # ⚙️ 1. إعدادات الصفحة
@@ -101,7 +101,20 @@ def text_to_audio(text):
 
 
 # ==========================================
-# 🔒 3. إدارة الجلسة وتسجيل الدخول الدائم
+# 🤖 3. إعداد محرك الذكاء الاصطناعي (Gemini)
+# ==========================================
+# يمكنك استبدال هذا المفتاح بمفتاحك المجاني من Google AI Studio
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "ضع_مفتاح_GEMINI_هنا")
+
+try:
+    genai.configure(api_key=GEMINI_API_KEY)
+    ai_model = genai.GenerativeModel("gemini-1.5-flash")
+except Exception:
+    ai_model = None
+
+
+# ==========================================
+# 🔒 4. إدارة الجلسة وتسجيل الدخول الدائم
 # ==========================================
 EXECUTIVE_EMAIL = "jehejfkfbw@gmail.com"
 SESSION_FILE = "user_session.txt"
@@ -136,7 +149,7 @@ if "user_email" not in st.session_state:
     st.session_state["user_email"] = get_saved_user()
 
 # ==========================================
-# 🔑 4. شاشة التسجيل
+# 🔑 5. شاشة التسجيل
 # ==========================================
 if not st.session_state["user_email"]:
     st.title("⚡ مرحباً بك في منصة Nova AI")
@@ -170,7 +183,7 @@ if not st.session_state["user_email"]:
                 st.error("يرجى إدخال البريد الإلكتروني وكلمة السر بشكل صحيح.")
 
 # ==========================================
-# 🚀 5. التطبيق الرئيسي
+# 🚀 6. التطبيق الرئيسي
 # ==========================================
 else:
     user_email = st.session_state["user_email"]
@@ -395,9 +408,13 @@ else:
 
                     with st.spinner("Nova يفكر الآن... ⚡"):
                         try:
-                            # شات مجاني بدون API Key
-                            full_prompt = f"{system_instruction}\n\nسؤال المستخدم: {user_prompt}"
-                            res_text = DDGS().chat(full_prompt, model="gpt-4o-mini")
+                            if ai_model:
+                                # استدعاء نموذج Gemini الجديد والمستقر بدلاً من g4f
+                                full_prompt = f"{system_instruction}\n\nالسؤال: {user_prompt}"
+                                response = ai_model.generate_content(full_prompt)
+                                res_text = response.text
+                            else:
+                                res_text = "يرجى إدخال مفتاح GEMINI_API_KEY لتشغيل الذكاء الاصطناعي."
                         except Exception as e:
                             res_text = f"حدث خطأ أثناء الاتصال بالخادم: {e}"
 
