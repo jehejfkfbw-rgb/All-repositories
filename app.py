@@ -102,45 +102,42 @@ def text_to_audio(text):
 
 
 # ==========================================
-# 🤖 4. المحرك الذكي (شغّال تلقائياً وبدون أي مفتاح API)
+# 🤖 4. محرك الردود الذكي المتعدد (بدون توقف)
 # ==========================================
 def ask_nova_ai(prompt):
-  system_prompt = (
-      "أنت مساعد ذكي اسمك Nova تابع لشركة كيفو (Kivo). المطور التنفيذي هو"
-      " محمد عادل من شركة كيفو (Kivo)."
-  )
+  sys_prompt = "أنت مساعد ذكي اسمه Nova تابع لشركة Kivo. المطور التنفيذي هو محمد عادل من شركة Kivo. أجب على السؤال التالي بذكاء وبالمصرية أو العربية البسيطة:"
 
-  # محاولة عبر سيرفر سريع خفيف
+  # المحاولة الأولى: سيرفر Pollinations المباشر بنمط qna
   try:
-    url = "https://text.pollinations.ai/"
+    encoded_p = urllib.parse.quote(f"{sys_prompt}\nالسؤال: {prompt}")
+    url = f"https://text.pollinations.ai/{encoded_p}?model=qna&cache=false"
+    res = requests.get(url, timeout=12)
+    if res.status_code == 200 and len(res.text.strip()) > 5:
+      return res.text.strip()
+  except Exception:
+    pass
+
+  # المحاولة الثانية: سيرفر خفيف بديل
+  try:
     payload = {
         "messages": [
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": sys_prompt},
             {"role": "user", "content": prompt},
         ],
-        "model": "searchgpt",
+        "model": "mistral",
     }
     res = requests.post(
-        url, json=payload, headers={"Content-Type": "application/json"}, timeout=10
+        "https://text.pollinations.ai/",
+        json=payload,
+        headers={"Content-Type": "application/json"},
+        timeout=12,
     )
-    if res.status_code == 200 and res.text.strip():
+    if res.status_code == 200 and len(res.text.strip()) > 5:
       return res.text.strip()
   except Exception:
     pass
 
-  # خيار احتياطي مجاني سريع جداً مباشر
-  try:
-    alt_url = f"https://text.pollinations.ai/{urllib.parse.quote(prompt)}?system={urllib.parse.quote(system_prompt)}"
-    res = requests.get(alt_url, timeout=10)
-    if res.status_code == 200 and res.text.strip():
-      return res.text.strip()
-  except Exception:
-    pass
-
-  return (
-      "مرحباً بك! أنا نظام Nova من شركة كيفو (Kivo). تم استلام رسالتك"
-      " بنجاح، كيف يمكنني مساعدتك؟"
-  )
+  return "عذراً، السيرفر المجاني يمر بضغط حالياً. يرجى إعادة إرسال السؤال بعد ثوانٍ قليلة."
 
 
 # ==========================================
@@ -270,7 +267,6 @@ else:
 
   st.markdown("---")
 
-  # 💬 الشات الرئيسي
   if app_mode == "💬 الشات الذكي (صور + فيديوهات)":
 
     for idx, m in enumerate(st.session_state.messages):
@@ -289,7 +285,7 @@ else:
         st.markdown(user_prompt)
 
       with st.chat_message("assistant"):
-        with st.spinner("Nova يجيب الآن... ⚡"):
+        with st.spinner("Nova يفكر ويجيب... ⚡"):
           res_text = ask_nova_ai(user_prompt)
 
         st.markdown(res_text)
