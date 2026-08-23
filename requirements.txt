@@ -1,5 +1,5 @@
 streamlit
-g4f
+duckduckgo_search
 Pillow
 requests
 gTTS
