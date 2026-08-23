@@ -1,9 +1,11 @@
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
+import json
 import os
 import time
 import urllib.parse
+from g4f.client import Client
 from gtts import gTTS
 from PIL import Image
 import requests
@@ -59,89 +61,111 @@ def text_to_audio(text):
 
 
 # ==========================================
-# 🔑 4. إدارة أكواد VIP الديناميكية
+# 🔑 4. إدارة أكواد VIP المتقدمة (تواريخ + حذف)
 # ==========================================
-CODES_FILE = "vip_codes.txt"
+CODES_FILE = "vip_codes.json"
 
 
-def get_vip_codes():
+def load_vip_codes():
+  """تحميل الأكواد وبيانات انتهاء صلاحيتها"""
   if not os.path.exists(CODES_FILE):
-    default_codes = ["NOVA2026", "KIVO_VIP", "MOHAMED_NOVA"]
+    # إنشاء أكواد افتراضية لمدة 30 يوماً
+    default_expiry = (datetime.now() + timedelta(days=30)).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+    default_codes = {
+        "NOVA2026": {"expiry": default_expiry, "days": 30},
+        "KIVO_VIP": {"expiry": default_expiry, "days": 30},
+    }
     save_vip_codes(default_codes)
     return default_codes
+
   try:
     with open(CODES_FILE, "r", encoding="utf-8") as f:
-      codes = [line.strip() for line in f.readlines() if line.strip()]
-      return codes
+      return json.load(f)
   except Exception:
-    return ["NOVA2026"]
+    return {}
 
 
-def save_vip_codes(codes_list):
+def save_vip_codes(codes_dict):
+  """حفظ الأكواد في ملف JSON"""
   with open(CODES_FILE, "w", encoding="utf-8") as f:
-    for code in set(codes_list):
-      f.write(f"{code}\n")
+    json.dump(codes_dict, f, ensure_ascii=False, indent=4)
+
+
+def add_vip_code(code_name, days=30):
+  """إضافة كود جديد مع مدة محددة بالأيام"""
+  codes = load_vip_codes()
+  expiry_date = (datetime.now() + timedelta(days=days)).strftime(
+      "%Y-%m-%d %H:%M:%S"
+  )
+  codes[code_name.strip()] = {"expiry": expiry_date, "days": days}
+  save_vip_codes(codes)
+
+
+def delete_vip_code(code_name):
+  """حذف كود وإلغاؤه فوراً"""
+  codes = load_vip_codes()
+  if code_name in codes:
+    del codes[code_name]
+    save_vip_codes(codes)
+
+
+def validate_vip_code(code_name):
+  """التحقق من صحة الكود وعدم انتهاء صلاحيته"""
+  codes = load_vip_codes()
+  if code_name not in codes:
+    return False, "❌ الكود غير صحيح أو تم إلغاؤه من المطور."
+
+  expiry_str = codes[code_name]["expiry"]
+  expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d %H:%M:%S")
+
+  if datetime.now() > expiry_date:
+    return False, "⏳ هذا الكود انتهت مدة صلاحيته."
+
+  return True, "🎉 تم تفعيل الكود بنجاح!"
 
 
 # ==========================================
-# 🤖 5. محرك الذكاء الاصطناعي الشامل والتفصيلي
+# 🤖 5. محرك الذكاء الاصطناعي
 # ==========================================
 def ask_nova_ai(prompt, is_vip=False):
-  # توجيه النظام لإجابات طويلة وشاملة جداً
   sys_prompt = (
       "أنت مساعد ذكي ومتطور اسمه Nova تابع لشركة Kivo والمطور التنفيذي هو"
-      " محمد عادل. "
-      "قانونك الأساسي: يجب أن تكون إجابتك مفصلة جداً، شمولية، وغنية بالمعلومات"
-      " الدقيقة والتوضيحات والخطوات العملية. "
-      "ممنوع نهائياً الإجابات المختصرة أو الجمل القليلة. اشرح الموضوع باستفاضة"
-      " كاملة واكتب إجابة غنية واحترافية:"
+      " محمد عادل. أجب بأسلوب مفصل، شامل، وغني بالمعلومات والملاحظات الدقيقة"
+      " دون اختصار:"
   )
 
-  # 1. المحاولة الأولى باستخدام نموذج OpenAI GPT المتقدم عبر Pollinations
   try:
-    payload = {
-        "messages": [
+    client = Client()
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
             {"role": "system", "content": sys_prompt},
             {"role": "user", "content": prompt},
         ],
-        "model": "openai",
-        "cache": False,
-    }
-    res = requests.post(
-        "https://text.pollinations.ai/",
-        json=payload,
-        headers={"Content-Type": "application/json"},
-        timeout=15,
     )
-    if res.status_code == 200 and len(res.text.strip()) > 20:
+    res_text = response.choices[0].message.content
+    if res_text and len(res_text.strip()) > 5:
       prefix = (
-          "⚡ **[سيرفر VIP الفائق - إجابة تفصيلية شاملة]**\n\n" if is_vip else ""
+          "⚡ **[سيرفر VIP الفائق - استجابة فائقة السرعة]**\n\n"
+          if is_vip
+          else ""
       )
-      return f"{prefix}{res.text.strip()}"
+      return f"{prefix}{res_text.strip()}"
   except Exception:
     pass
 
-  # 2. المحاولة الثانية عبر نموذج البحث المباشر
   try:
     encoded_p = urllib.parse.quote(f"{sys_prompt}\nالسؤال: {prompt}")
-    url = f"https://text.pollinations.ai/{encoded_p}?model=searchgpt&cache=false"
-    res = requests.get(url, timeout=15)
-    if res.status_code == 200 and len(res.text.strip()) > 20:
-      prefix = "👑 **[استجابة سيرفر Nova VIP المباشرة]**\n\n" if is_vip else ""
-      return f"{prefix}{res.text.strip()}"
-  except Exception:
-    pass
-
-  # 3. المحاولة الثالثة الاحتياطية باستخدام موديل qna
-  try:
-    alt_url = f"https://text.pollinations.ai/{urllib.parse.quote(prompt)}?system={urllib.parse.quote(sys_prompt)}&model=qna"
-    res = requests.get(alt_url, timeout=15)
-    if res.status_code == 200 and len(res.text.strip()) > 10:
+    url = f"https://text.pollinations.ai/{encoded_p}?cache=false"
+    res = requests.get(url, timeout=10)
+    if res.status_code == 200 and len(res.text.strip()) > 5:
       return res.text.strip()
   except Exception:
     pass
 
-  return "عذراً، حدث ضغط مفاجئ على السيرفرات. يرجى إعادة الضغط على إرسال وسيقوم النظام بالرد فوراً بإجابة كاملة."
+  return "حدث خطأ مؤقت في الاتصال، يرجى إعادة إرسال السؤال مرة أخرى وسيتم الرد فوراً."
 
 
 # ==========================================
@@ -181,6 +205,9 @@ if "user_email" not in st.session_state:
 
 if "vip_activated" not in st.session_state:
   st.session_state["vip_activated"] = False
+
+if "active_code" not in st.session_state:
+  st.session_state["active_code"] = ""
 
 # ==========================================
 # 🔑 7. شاشة التسجيل
@@ -233,45 +260,76 @@ else:
 
   st.sidebar.markdown("---")
 
-  # 🛠️ لوحة تحكم المطور
+  # 🛠️ لوحة تحكم المطور الفائقة (إضافة + تحديد الأيام + حذف الأكواد)
   if is_executive:
-    st.sidebar.subheader("🛠️ لوحة تحكم الأكواد")
-    current_codes = get_vip_codes()
+    st.sidebar.subheader("🛠️ لوحة تحكم الاشتراك و الأكواد")
     new_code = st.sidebar.text_input("أنشئ كود VIP جديد:")
-    if st.sidebar.button("➕ إضافة الكود"):
+    code_days = st.sidebar.number_input(
+        "مدة الكود (بالأيام):", min_value=1, value=30, step=1
+    )
+
+    if st.sidebar.button("➕ إنشاء الكود"):
       if new_code.strip():
-        current_codes.append(new_code.strip())
-        save_vip_codes(current_codes)
-        st.sidebar.success(f"تمت إضافة الكود: {new_code.strip()}")
+        add_vip_code(new_code.strip(), int(code_days))
+        st.sidebar.success(
+            f"تمت إضافة الكود: {new_code.strip()} لمدة {code_days} يوم"
+        )
         time.sleep(0.5)
         st.rerun()
 
-    st.sidebar.caption(f"الأكواد الشغالة: {', '.join(current_codes)}")
+    st.sidebar.markdown("**📊 الأكواد المتاحة حالياً:**")
+    all_codes = load_vip_codes()
+
+    if not all_codes:
+      st.sidebar.caption("لا توجد أكواد حالياً.")
+    else:
+      for code_key, info in list(all_codes.items()):
+        col_code, col_btn = st.sidebar.columns([3, 1])
+        col_code.caption(f"🔑 `{code_key}`\n⏳ يفيض: {info['expiry'][:10]}")
+        if col_btn.button("❌", key=f"del_{code_key}"):
+          delete_vip_code(code_key)
+          st.sidebar.warning(f"تم إلغاء الكود: {code_key}")
+          time.sleep(0.5)
+          st.rerun()
+
     st.sidebar.markdown("---")
 
   # ⚙️ قسم اختيار السيرفر والاشتراك
   st.sidebar.subheader("🌐 نوع السيرفر")
+
+  # التحقق من صلاحية الكود الحالي إذا كان معفلاً
+  if st.session_state["vip_activated"]:
+    is_valid, msg = validate_vip_code(st.session_state["active_code"])
+    if not is_valid:
+      st.session_state["vip_activated"] = False
+      st.session_state["active_code"] = ""
+      st.sidebar.error(
+          f"⚠️ تم إلغاء اشتراكك: {msg}\nتم التحويل تلقائياً للسيرفر المجاني."
+      )
+
   server_option = st.sidebar.radio(
       "اختر السيرفر:",
       ["🌐 سيرفر مجاني", "👑 سيرفر VIP الخاص (للمشتركين)"],
+      index=1 if st.session_state["vip_activated"] else 0,
   )
 
   if server_option == "👑 سيرفر VIP الخاص (للمشتركين)":
-    vip_code_input = st.sidebar.text_input(
-        "🔑 أدخل كود التفعيل (VIP):", type="password"
-    )
-
-    if st.sidebar.button("✅ تأكيد وتفعيل VIP"):
-      if vip_code_input.strip() in get_vip_codes():
-        st.session_state["vip_activated"] = True
-        st.sidebar.success("🎉 تم تأكيد الكود وتفعيل سيرفر VIP بنجاح!")
-        time.sleep(0.5)
-        st.rerun()
-      else:
-        st.session_state["vip_activated"] = False
-        st.sidebar.error("❌ الكود غير صحيح أو منتهي الصلاحية.")
-
     if not st.session_state["vip_activated"]:
+      vip_code_input = st.sidebar.text_input(
+          "🔑 أدخل كود التفعيل (VIP):", type="password"
+      )
+
+      if st.sidebar.button("✅ تأكيد وتفعيل VIP"):
+        is_valid, msg = validate_vip_code(vip_code_input.strip())
+        if is_valid:
+          st.session_state["vip_activated"] = True
+          st.session_state["active_code"] = vip_code_input.strip()
+          st.sidebar.success(msg)
+          time.sleep(0.5)
+          st.rerun()
+        else:
+          st.sidebar.error(msg)
+
       st.sidebar.info(
           f"💸 **للتحويل والاشتراك:**\nتحويل المبلغ على محفظة **أورنج كاش"
           f" (Orange Cash)** برقم:\n`{ORANGE_CASH_NUMBER}`"
@@ -284,7 +342,7 @@ else:
 
   st.sidebar.markdown("---")
 
-  # تصميم الواجهة الجرافيكية المميزة
+  # استايل VIP
   if st.session_state["vip_activated"]:
     st.markdown(
         """
@@ -315,7 +373,7 @@ else:
   if "messages" not in st.session_state:
     welcome_msg = (
         "مرحباً بك أيها المطور التنفيذي محمد عادل تبع شركة كيفو! نظام Nova"
-        " جاهز للرد على كل أسئلتك باستفاضة وإجابات كاملة."
+        " جاهز ومستعد للإجابة على كل الأسئلة بنجاح."
         if is_executive
         else "مرحباً بك في تطبيق Nova من شركة كيفو!"
     )
@@ -376,12 +434,12 @@ else:
         st.markdown(user_prompt)
 
       with st.chat_message("assistant"):
-        with st.spinner("Nova يحلل ويكتب إجابة تفصيلية شاملة... ⚡"):
+        with st.spinner("Nova يجيب الآن... ⚡"):
           if (
               server_option == "👑 سيرفر VIP الخاص (للمشتركين)"
               and not st.session_state["vip_activated"]
           ):
-            res_text = "❌ يرجى أدخال كود VIP والضغط على **تأكيد وتفعيل VIP** للاستفادة من السيرفر الخاص."
+            res_text = "❌ يرجى إدخال كود VIP والضغط على **تأكيد وتفعيل VIP** أولاً."
           else:
             res_text = ask_nova_ai(
                 user_prompt, is_vip=st.session_state["vip_activated"]
