@@ -3,7 +3,8 @@ import json
 import os
 import time
 from datetime import datetime, timedelta
-from gtts import gTTS
+import google.generativeai as genai
+from huggingface_hub import InferenceClient
 import requests
 import streamlit as st
 
@@ -17,6 +18,11 @@ st.set_page_config(
 ORANGE_CASH_NUMBER = "01213783090"
 EXECUTIVE_EMAIL = "jehejfkfbw@gmail.com"
 CODES_FILE = "vip_codes.json"
+
+# 🔑 ضع مفتاح Google Gemini الخاص بك هنا أو اتركه ليقرأ من st.secrets
+GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
+if GEMINI_API_KEY != "YOUR_GEMINI_API_KEY_HERE":
+  genai.configure(api_key=GEMINI_API_KEY)
 
 
 # ==========================================
@@ -80,77 +86,59 @@ def validate_and_check_expiry(code_name):
 
 
 # ==========================================
-# 🌐 3. السيرفر المحلي (بسيط ومحدد)
+# 🌐 3. السيرفر المحلي (ذكاء اصطناعي مجاني 100% عبر HuggingFace)
 # ==========================================
 def ask_local_server(prompt):
-  p = prompt.strip().lower()
-  now = datetime.now()
-
-  if any(x in p for x in ["الساعه", "الساعة", "التاريخ", "اليوم", "الوقت"]):
-    days_ar = [
-        "الإثنين",
-        "الثلاثاء",
-        "الأربعاء",
-        "الخميس",
-        "الجمعة",
-        "السبت",
-        "الأحد",
+  """يعمل بمكتبة ذكاء اصطناعي خفيفة ومجانية دون الحاجة لمفاتيح مدفوعة."""
+  try:
+    client = InferenceClient("Qwen/Qwen2.5-Coder-32B-Instruct")
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "أنت المساعد الذكي المجاني لمنصة نوفا (Nova AI Studio). أجب"
+                " على سؤال المستخدم بذكاء ووضوح."
+            ),
+        },
+        {"role": "user", "content": prompt},
     ]
-    return f"📅 اليوم: {days_ar[now.weekday()]}\n📆 التاريخ: {now.strftime('%Y-%m-%d')}\n⏰ الوقت بالثواني: {now.strftime('%I:%M:%S %p')}"
-  elif any(x in p for x in ["اهلي", "الأهلي", "مباراه", "مباراة"]):
-    return "⚽ **النادي الأهلي:** موعد مباراة الأهلي القادمة متاح ضمن جدول المباريات المحلي."
-  else:
-    return "⚠️ **السيرفر المحلي محدود:** يدعم فقط الوقت، التاريخ، والأساسيات. اشترك في VIP للذكاء الشامل."
+    response = client.chat_completion(
+        messages=messages, max_tokens=500, temperature=0.7
+    )
+    return response.choices[0].message.content
+  except Exception as e:
+    # رد احتياطي محلي في حالة انقطاع الاتصال بالمكتبة
+    p = prompt.strip().lower()
+    now = datetime.now()
+    if any(x in p for x in ["الساعه", "الساعة", "التاريخ", "اليوم", "الوقت"]):
+      days_ar = [
+          "الإثنين",
+          "الثلاثاء",
+          "الأربعاء",
+          "الخميس",
+          "الجمعة",
+          "السبت",
+          "الأحد",
+      ]
+      return f"📅 اليوم: {days_ar[now.weekday()]}\n📆 التاريخ: {now.strftime('%Y-%m-%d')}\n⏰ الوقت: {now.strftime('%I:%M:%S %p')}"
+    return "🤖 **النسخة المجانية:** حدث تعذر بسيط في المحرك المجاني، يرجى إعادة المحاولة أو الترقية لـ VIP."
 
 
 # ==========================================
-# 👑 4. سيرفر VIP المباشر والمضمون 100%
+# 👑 4. سيرفر VIP المباشر (Google Gemini API)
 # ==========================================
 def ask_vip_server(prompt):
-  sys_p = "أنت مساعد ذكي شامل يجيب عن كل الأسئلة في البرمجة والرياضة والواجبات. المطور هو محمد عادل لشركة Kivo."
+  """يعمل برموز وأكواد Google Gemini الذكية المتقدمة 100%."""
+  sys_p = "أنت مساعد VIP ذكي شامل وفائق الذكاء لمنصة Nova AI Studio. المطور هو محمد عادل لشركة Kivo."
   try:
-    req1 = requests.get(
-        "https://duckduckgo.com/duckchat/v1/status",
-        headers={"x-vqd-accept": "1"},
-        timeout=5,
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash", system_instruction=sys_p
     )
-    vqd = req1.headers.get("x-vqd-4")
-    if vqd:
-      payload = {
-          "model": "gpt-4o-mini",
-          "messages": [
-              {"role": "system", "content": sys_p},
-              {"role": "user", "content": prompt},
-          ],
-      }
-      res2 = requests.post(
-          "https://duckduckgo.com/duckchat/v1/chat",
-          json=payload,
-          headers={
-              "x-vqd-4": vqd,
-              "Content-Type": "application/json",
-              "Accept": "text/event-stream",
-          },
-          timeout=10,
-      )
-
-      full_res = ""
-      for line in res2.text.split("\n"):
-        if line.startswith("data: "):
-          d = line[6:]
-          if d != "[DONE]":
-            try:
-              j = json.loads(d)
-              if "message" in j:
-                full_res += j["message"]
-            except:
-              pass
-      if full_res.strip():
-        return full_res.strip()
-  except:
-    pass
-
-  return "⚡ **VIP AI:** أهلاً بك! أنا جاهز لإجابة سؤالك بالكامل، أعد إرسال سؤالك وسأجيب فوراً."
+    response = model.generate_content(prompt)
+    if response and response.text:
+      return response.text
+  except Exception as e:
+    return f"⚡ **VIP Gemini Error:** تعذر الاتصال بمحرك جوجل ({e}). يرجى التأكد من ضبط API Key بشكل صحيح."
 
 
 # ==========================================
@@ -243,10 +231,11 @@ else:
       st.markdown(prompt)
 
     with st.chat_message("assistant"):
-      if st.session_state["vip_activated"]:
-        ans = ask_vip_server(prompt)
-      else:
-        ans = ask_local_server(prompt)
+      with st.spinner("جاري معالجة الطلب..."):
+        if st.session_state["vip_activated"]:
+          ans = ask_vip_server(prompt)
+        else:
+          ans = ask_local_server(prompt)
 
       st.markdown(ans)
       st.session_state.messages.append({"role": "assistant", "content": ans})
