@@ -21,8 +21,8 @@ EXECUTIVE_EMAIL = "jehejfkfbw@gmail.com"
 CODES_FILE = "vip_codes.json"
 DB_FILE = "nova_database.db"
 
-# تم إضافة مفتاح Gemini API الخاص بك بنجاح
-GEMINI_API_KEY = "AQ.Ab8RN6J3U7EfqXducIBHzAG7fSxx4Bf-4UIoXwjLk1ljTAaCjw"
+# المفتاح الخاص بك
+GEMINI_API_KEY = "AQ.Ab8RN6LKT2joUyWc5npc7lCZcQ26uhSPsw_nxEHyeNFQuG3FiA"
 
 @st.cache_resource
 def get_gemini_client(api_key):
@@ -36,7 +36,7 @@ def get_gemini_client(api_key):
 gemini_client = get_gemini_client(GEMINI_API_KEY)
 
 # ==========================================
-# 💾 2. قاعدة البيانات المحفوظة
+# 💾 2. قاعدة البيانات المحفوظة (SQLite)
 # ==========================================
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -94,7 +94,7 @@ def validate_code(code_name):
         return False, "❌ الكود غير صحيح."
     return True, "🎉 تم تفعيل اشتراك VIP بنجاح!"
 
-# تعاملات قاعدة البيانات
+# تعاملات قاعدة البيانات لثبات الجلسة
 def db_get_user(email):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -139,25 +139,25 @@ def ask_free_server(prompt):
         days_ar = ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
         return f"📅 اليوم: {days_ar[now.weekday()]}\n📆 التاريخ: {now.strftime('%Y-%m-%d')}\n⏰ الوقت: {now.strftime('%I:%M:%S %p')}"
     else:
-        return f"🤖 **السيرفر المجاني:** تم استلام سؤالك: '{prompt}'. قم بتفعيل كود VIP للاستفادة من كامل قدرات الذكاء الاصطناعي."
+        return f"🤖 **السيرفر المجاني:** تم استلام سؤالك: '{prompt}'. لتلقي الإجابات الكاملة بالذكاء الاصطناعي، قم بتفعيل كود VIP."
 
 def ask_vip_server(prompt):
     if not gemini_client:
-        return "⚠️ **تنبيه VIP:** يتعذر الاتصال بمحرك Gemini، تأكد من صحة المفتاح."
+        return "⚠️ **تنبيه VIP:** يرجى التأكد من استخراج مفتاح Gemini الصحيح (يبدأ بـ AIzaSy) ليعمل السيرفر."
     
     sys_p = "أنت مساعد VIP ذكي وفائق القدرات لمنصة Nova AI Studio. المطور هو محمد عادل لشركة Kivo."
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-1.5-flash",
             contents=prompt,
             config={"system_instruction": sys_p}
         )
-        return response.text if response and response.text else "لم يتوفر رد."
+        return response.text if response and response.text else "لم يتوفر رد من السيرفر."
     except Exception as e:
-        return f"⚡ **خطأ في السيرفر:** {e}"
+        return f"⚡ **خطأ في السيرفر:** {e}\n(تأكد من استخدام مفتاح Gemini يبدأ بـ AIzaSy)"
 
 # ==========================================
-# 🚀 6. الواجهة وتطبيقات المستخدم
+# 🚀 6. الواجهة وتجربة المستخدم
 # ==========================================
 if "user_email" not in st.session_state:
     st.session_state["user_email"] = None
