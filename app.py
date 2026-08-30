@@ -1,117 +1,101 @@
-import sqlite3
+from datetime import datetime, timedelta
 import random
-import datetime
+import string
+import sqlite3
 import urllib.parse
+import pandas as pd
 import requests
 import streamlit as st
 
 # =========================================================
-# 1. إعدادات الصفحة والتصميم
+# 1. إعدادات وتصميم الصفحة
 # =========================================================
-st.set_page_config(
-    page_title="تسجيل طلاب المنصة",
-    page_icon="🎓",
-    layout="centered"
-)
+st.set_page_config(page_title="منصة نوفا التعليمية", page_icon="🌟", layout="centered")
 
-# إضافة تنسيق بسيط لدعم اللغة العربية والاتجاه من اليمين للشمال
 st.markdown("""
     <style>
     .main { text-align: right; direction: rtl; }
     div[data-baseweb="input"] { text-align: right; }
-    .stButton>button { width: 100%; background-color: #4CAF50; color: white; font-weight: bold; border-radius: 8px; height: 50px; }
-    .code-card { background-color: #f0f8ff; border: 2px dashed #1e90ff; padding: 20px; border-radius: 12px; text-align: center; margin-top: 15px; }
-    .code-title { color: #333; font-size: 18px; margin-bottom: 5px; }
-    .code-val { color: #1e90ff; font-size: 32px; font-weight: bold; letter-spacing: 2px; }
+    .stButton>button { width: 100%; background-color: #2e7d32; color: white; font-weight: bold; border-radius: 8px; height: 45px; }
     </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 2. إدارة قاعدة البيانات وتوليد كود الطالب
+# 2. إدارة قاعدة البيانات
 # =========================================================
-DB_NAME = "students_system.db"
+DB_NAME = "nova_platform.db"
 
 def init_db():
-    """إنشاء جدول الطلاب إذا لم يكن موجوداً"""
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS registered_students (
+            CREATE TABLE IF NOT EXISTS pending_students (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                student_code TEXT UNIQUE NOT NULL,
+                student_code TEXT UNIQUE,
                 full_name TEXT NOT NULL,
                 phone TEXT NOT NULL,
                 governorate TEXT NOT NULL,
                 course_name TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                approved_at TIMESTAMP
             )
         """)
         conn.commit()
 
-def generate_unique_student_code():
-    """توليد كود طالب فريد ومميز مثل STU-2026-8492"""
-    year = datetime.datetime.now().year
+def generate_random_student_code():
+    prefix = "NOVA"
     while True:
-        random_num = random.randint(1000, 9999)
-        code = f"STU-{year}-{random_num}"
-        
-        # التأكد من عدم تكرار الكود في قاعدة البيانات
+        random_chars = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        code = f"{prefix}-{random_chars}"
         with sqlite3.connect(DB_NAME) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id FROM registered_students WHERE student_code = ?", (code,))
+            cursor.execute("SELECT id FROM pending_students WHERE student_code = ?", (code,))
             if not cursor.fetchone():
                 return code
 
-def save_student(student_code, name, phone, governorate, course):
-    """حفظ بيانات الطالب في السيستم"""
+def register_application(name, phone, governorate, course):
     try:
         with sqlite3.connect(DB_NAME) as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO registered_students (student_code, full_name, phone, governorate, course_name)
-                VALUES (?, ?, ?, ?, ?)
-            """, (student_code, name, phone, governorate, course))
+                INSERT INTO pending_students (full_name, phone, governorate, course_name)
+                VALUES (?, ?, ?, ?)
+            """, (name, phone, governorate, course))
             conn.commit()
-            return True, "تم الحفظ بنجاح"
+            return True, "تم تقديم طلبك بنجاح!"
     except Exception as e:
         return False, str(e)
 
+def approve_student_and_generate_code(student_id):
+    student_code = generate_random_student_code()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE pending_students 
+            SET status = 'approved', student_code = ?, approved_at = ?
+            WHERE id = ?
+        """, (student_code, now_str, student_id))
+        conn.commit()
+    return student_code
+
 # =========================================================
-# 3. نظام إرسال إشعارات الواتساب للمطور/الإدارة
+# 3. إرسال تنبيهات الواتساب
 # =========================================================
-def send_admin_whatsapp_notification(student_code, name, phone, governorate, course):
-    """
-    إرسال رسالة واتساب للإدارة عند تسجيل طالب جديد.
-    تستخدم خدمة CallMeBot المجانية للتنبيهات.
-    """
-    # احصل على رقمك و APIKEY من st.secrets أو ضعهم هنا للتجربة
-    admin_phone = st.secrets.get("ADMIN_WHATSAPP_PHONE", "") # مثال: "2010xxxxxxx"
+def send_whatsapp_msg(target_phone, text):
+    admin_phone = st.secrets.get("ADMIN_WHATSAPP_PHONE", target_phone)
     apikey = st.secrets.get("CALLMEBOT_APIKEY", "")
 
-    if not admin_phone or not apikey:
-        # إذا لم يتم ضبط التنسيق، يتم تخطي الإرسال دون إيقاف البرنامج
+    if not apikey:
         return False
 
-    # رابط الواتساب المباشر للرد على الطالب بضغطة واحدة
-    clean_phone = phone.replace("+", "").replace(" ", "")
-    if not clean_phone.startswith("2"): # إضافة كود مصر مثلاً لو لم يكن موجوداً
+    clean_phone = target_phone.replace("+", "").replace(" ", "").strip()
+    if not clean_phone.startswith("2"):
         clean_phone = "2" + clean_phone
-    wa_reply_link = f"https://wa.me/{clean_phone}"
 
-    # نص الرسالة التي ستصلك على الواتساب
-    message_text = (
-        f"🚨 *تسجيل طالب جديد في المنصة!*\n\n"
-        f"🆔 *كود الطالب:* `{student_code}`\n"
-        f"👤 *الاسم للشهادة:* {name}\n"
-        f"📱 *رقم الواتساب:* {phone}\n"
-        f"📍 *المحافظة:* {governorate}\n"
-        f"📚 *الكورس المطلوب:* {course}\n\n"
-        f"💬 *للرد المباشر على الطالب انقر هنا:* {wa_reply_link}"
-    )
-
-    encoded_msg = urllib.parse.quote(message_text)
-    url = f"https://api.callmebot.com/whatsapp.php?phone={admin_phone}&text={encoded_msg}&apikey={apikey}"
-    
+    encoded_text = urllib.parse.quote(text)
+    url = f"https://api.callmebot.com/whatsapp.php?phone={clean_phone}&text={encoded_text}&apikey={apikey}"
     try:
         res = requests.get(url, timeout=10)
         return res.ok
@@ -119,87 +103,75 @@ def send_admin_whatsapp_notification(student_code, name, phone, governorate, cou
         return False
 
 # =========================================================
-# 4. واجهة المستخدم (Streamlit UI)
+# 4. الواجهة الرئيسية والتنقل
 # =========================================================
 init_db()
 
-st.title("🎓 استمارة تسجيل طالب جديد")
-st.write("برجاء إدخال البيانات بدقة، حيث سيتمد استخدام الاسم في **شهادة اكتمال الدورة**.")
+page = st.sidebar.radio("القائمة:", ["استمارة التقديم", "لوحة تحكم المطور"])
 
-with st.form("student_registration_form"):
-    full_name = st.text_input("الاسم الثلاثي أو الرباعي (كما يظهر بالشهادة):", placeholder="مثال: أحمد محمد علي محمود")
-    phone_number = st.text_input("رقم الهاتف / الواتساب المفعل:", placeholder="010xxxxxxx")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        governorate = st.selectbox("المحافظة:", [
-            "القاهرة", "الجيزة", "الإسكندرية", "الدقهلية", "الشرقية", 
-            "المنوفية", "الغربية", "القليوبية", "البحيرة", "كفر الشيخ", 
-            "دمياط", "بورسعيد", "الإسماعيلية", "السويس", "أخرى"
-        ])
-    with col2:
-        course_name = st.selectbox("الكورس المراد الاشتراك فيه:", [
-            "كورس برمجة المواقع (Web Dev)",
-            "كورس بايثون وتطوير الذكاء الاصطناعي",
-            "كورس تصميم واجهات المستخدم (UI/UX)",
-            "كورس الأساسيات والبرمجة للمبتدئين"
-        ])
+if page == "استمارة التقديم":
+    st.title("🌟 منصة نوفا التعليمية")
+    st.subheader("📝 طلب الالتحاق بالكورسات")
+    st.info("قم بملء البيانات، وسيتم مراجعة طلبك وقبوله خلال 24 ساعة وإرسال كود الطالب الخاص بك عبر الواتساب.")
 
-    submit_btn = st.form_submit_button("تسجيل والحصول على كود الطالب 🚀")
-
-if submit_btn:
-    if not full_name.strip() or not phone_number.strip():
-        st.error("⚠️ برجاء ملء كافة البيانات المطلوبة قبل إرسال الاستمارة.")
-    elif len(phone_number.strip()) < 10:
-        st.error("⚠️ برجاء كتابة رقم هاتف صحيح.")
-    else:
-        # 1. توليد كود الطالب
-        new_student_code = generate_unique_student_code()
+    with st.form("apply_form"):
+        full_name = st.text_input("الاسم الرباعي:")
+        phone = st.text_input("رقم الواتساب:", placeholder="010xxxxxxx")
+        governorate = st.selectbox("المحافظة:", ["الدقهلية", "القاهرة", "الجيزة", "الإسكندرية", "أخرى"])
+        course = st.selectbox("الكورس المطلوب:", ["كورس البرمجة والبايثون", "كورس تطوير المواقع", "كورس الذكاء الاصطناعي"])
         
-        # 2. حفظ الطالب في قاعدة البيانات
-        success, msg = save_student(new_student_code, full_name, phone_number, governorate, course_name)
-        
-        if success:
-            st.balloons()
-            st.success("🎉 تم تسجيل بياناتك بنجاح في المنصة!")
-            
-            # عرض بطاقة كود الطالب بشكل واضح
-            st.markdown(f"""
-                <div class="code-card">
-                    <div class="code-title">📌 كود الطالب الخاص بك (احتفظ به):</div>
-                    <div class="code-val">{new_student_code}</div>
-                    <p style="color: #666; font-size: 13px; margin-top: 8px;">
-                        استخدم هذا الكود عند التواصل معنا وفي طباعة شهادة التخرج لاحقاً.
-                    </p>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            # 3. إرسال إشعار الواتساب للآدمن
-            sent = send_admin_whatsapp_notification(new_student_code, full_name, phone_number, governorate, course_name)
-            if sent:
-                st.info("📲 تم إرسال إشعار بالتسجيل لخدمة العملاء وسنتواصل معك عبر الواتساب قريباً.")
-            else:
-                st.info("✅ تم تسجيل بياناتك بالسيستم بنجاح.")
+        submit = st.form_submit_button("إرسال طلب التقديم 🚀")
+
+    if submit:
+        if not full_name.strip() or not phone.strip():
+            st.error("⚠️ يرجى كتابة كافة البيانات.")
         else:
-            st.error(f"حدث خطأ أثناء التسجيل: {msg}")
+            ok, msg = register_application(full_name, phone, governorate, course)
+            if ok:
+                st.success("🎉 تم تقديم طلبك بنجاح! طلبك قيد المراجعة حالياً، وسنرسل لك كود الطالب على الواتساب فور التفعيل خلال 24 ساعة.")
+                
+                # إشعار سريع للمطور بوجود طلب جديد
+                admin_phone = st.secrets.get("ADMIN_WHATSAPP_PHONE", "")
+                if admin_phone:
+                    send_whatsapp_msg(admin_phone, f"📥 طلب جديد مقدم في منصة نوفا من: {full_name} ({phone})")
+            else:
+                st.error(f"حدث خطأ: {msg}")
 
-# =========================================================
-# 5. عرض سريع للبيانات المسجلة (لوحة الإدارة المصغرة)
-# =========================================================
-st.divider()
-with st.expander("🔍 عرض السجلات المسجلة (خاص بالإدارة)"):
-    with sqlite3.connect(DB_NAME) as conn:
-        import pandas as pd
-        df = pd.read_sql_query("SELECT id, student_code, full_name, phone, governorate, course_name, created_at FROM registered_students ORDER BY id DESC", conn)
-        st.dataframe(df, use_container_width=True)
-```eof
+else:
+    st.title("⚙️ لوحة إدارة منصة نوفا")
+    admin_pass = st.text_input("كلمة سر المطور:", type="password")
+    
+    if admin_pass == st.secrets.get("ADMIN_PASSWORD", "2010"):
+        st.success("مرحباً بك يا مطور المنصة 👋")
+        
+        with sqlite3.connect(DB_NAME) as conn:
+            df_pending = pd.read_sql_query("SELECT * FROM pending_students WHERE status = 'pending'", conn)
+            df_approved = pd.read_sql_query("SELECT * FROM pending_students WHERE status = 'approved'", conn)
 
-### مميزات هذا الكود:
-1. **توليد تلقائي لكود الطالب (`Student Code`):** يولد كوداً منسقاً وغير مكرر مثل (`STU-2026-4891`) ويُعرض للطالب في بطاقة بارزة ليحتفظ به.
-2. **إشعار الواتساب الفوري:** يرسل لك رسالة فورية على الواتساب عند تسجيل أي طالب تحتوي على:
-   - بيانات الطالب كاملة (الاسم للشهادة، الرقم، الكورس، المحافظة).
-   - كود الطالب الخاص به.
-   - **رابط مباشر بضغطة واحدة (`wa.me`)** لفتح الشات مع الطالب فوراً والرد عليه في الواتساب.
-3. **حفظ في قاعدة البيانات:** البيانات محفوظة في جدول `registered_students` لإصدار الشهادات منه لاحقاً.
+        st.subheader("📌 الطلبات المنتظرة للقبول (خلال 24 ساعة)")
+        if df_pending.empty:
+            st.info("لا توجد طلبات معلقة حالياً.")
+        else:
+            for _, row in df_pending.iterrows():
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.write(f"👤 **{row['full_name']}** | 📱 {row['phone']} | 📚 {row['course_name']} ({row['created_at']})")
+                with col2:
+                    if st.button(f"قبول وإرسال الكود", key=f"app_{row['id']}"):
+                        code = approve_student_and_generate_code(row['id'])
+                        
+                        # نص رسالة القبول للطالب
+                        msg_to_student = (
+                            f"🎉 *مبروك! تم قبولك في منصة نوفا التعليمية*\n\n"
+                            f"👤 الطالب: {row['full_name']}\n"
+                            f"📚 الكورس: {row['course_name']}\n"
+                            f"🔑 *كود الطالب الخاص بك:* `{code}`\n\n"
+                            f"احتفظ بهذا الكود للدخول للبث المباشر وإصدار الشهادة."
+                        )
+                        send_whatsapp_msg(row['phone'], msg_to_student)
+                        st.success(f"تم قبول الطالب وتوليد الكود: {code}")
+                        st.rerun()
 
-بعد اعتماد هذه الخطوة وتجربتها، الخطوة التالية مباشرةً سنقوم بربط هذا الكود بصفحة الاشتراك في الكورسات والبث المباشر.
+        st.divider()
+        st.subheader("✅ الطلاب المقبولين ومفعلين")
+        st.dataframe(df_approved, use_container_width=True)
